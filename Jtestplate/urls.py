@@ -17,6 +17,11 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
+from testplate_server.userviews import UserAdd
+from testplate_server.views import TestView
+
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('test/', TestView.as_view()),
+    path('user/add/', UserAdd.as_view())
 ]
