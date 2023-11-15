@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.db.models import Count
 from django.shortcuts import render
 from rest_framework import serializers
@@ -30,7 +32,7 @@ class UserList(APIView):
         filtered_params = {k: v for k, v in sq.items() if k not in excluded_keys}
         # 获取列表的查询字段后，根据需要进行模糊查询
         if 'name' in filtered_params:
-            filtered_params['username__contains'] = filtered_params['name']
+            filtered_params['name__contains'] = filtered_params['name']
             filtered_params.pop('name')
         users = User.objects.filter(**filtered_params)
         size = int(request.GET.get('size'))
@@ -63,6 +65,7 @@ class UserAdd(APIView):
             # 密码用md5加密
             password = serializer.validated_data['password']
             serializer.validated_data['password'] = md5(password)
+            serializer.validated_data['updated_time'] = datetime.now().strftime("%Y-%M-%S %H:%m:%s")
 
             serializer.save()
             res = {'status': True,
