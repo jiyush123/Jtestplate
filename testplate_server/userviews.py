@@ -20,7 +20,7 @@ class UserListSerializer(serializers.ModelSerializer):
 class UserAddSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["name", "username", "password", "created_time", "updated_time"]
+        fields = ["name", "username", "password"]
 
 
 class UserList(APIView):
@@ -65,7 +65,7 @@ class UserAdd(APIView):
             # 密码用md5加密
             password = serializer.validated_data['password']
             serializer.validated_data['password'] = md5(password)
-            serializer.validated_data['updated_time'] = datetime.now().strftime("%Y-%M-%S %H:%m:%s")
+            serializer.validated_data['updated_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
             serializer.save()
             res = {'status': True,
