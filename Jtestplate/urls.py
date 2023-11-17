@@ -17,8 +17,8 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
-from testplate_server.authview import LoginView,LogoutView
-from testplate_server.userviews import UserAdd, UserList
+from testplate_server.authview import LoginView, LogoutView
+from testplate_server.userviews import UserAdd, UserDetail, UserList, UserUpdate, UserDel
 from testplate_server.views import TestView
 
 urlpatterns = [
@@ -27,5 +27,9 @@ urlpatterns = [
     path('login/', LoginView.as_view()),
     path('logout/', LogoutView.as_view()),
     path('user/list/', UserList.as_view()),
-    path('user/add/', UserAdd.as_view())
+    path('user/detail/', UserDetail.as_view()),
+    path('user/add/', UserAdd.as_view()),
+    path('user/update/', UserUpdate.as_view()),
+    path('user/del/', UserDel.as_view()),
+
 ]

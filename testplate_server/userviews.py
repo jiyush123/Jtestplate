@@ -12,9 +12,11 @@ from testplate_server.utils.encrypt import md5
 
 
 class UserListSerializer(serializers.ModelSerializer):
+    updated_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
+
     class Meta:
         model = User
-        fields = ["id", "name", "username", "login_time"]
+        fields = ["id", "name", "username", "updated_time"]
 
 
 class UserAddSerializer(serializers.ModelSerializer):
@@ -34,6 +36,9 @@ class UserList(APIView):
         if 'name' in filtered_params:
             filtered_params['name__contains'] = filtered_params['name']
             filtered_params.pop('name')
+        if 'username' in filtered_params:
+            filtered_params['username__contains'] = filtered_params['username']
+            filtered_params.pop('username')
         users = User.objects.filter(**filtered_params)
         size = int(request.GET.get('size'))
         page = int(request.GET.get('page'))
@@ -54,6 +59,27 @@ class UserList(APIView):
         }
         return Response(result)
 
+
+class UserDetail(APIView):
+    """获取用户详情接口"""
+
+    def get(self, request):
+        id = request.GET.get('id')
+        exists = User.objects.filter(id=id).exists()
+        if not exists:
+            res = {'status': False,
+                   'code': '500',
+                   'msg': "数据不存在"}
+            return Response(res)
+        queryset = User.objects.filter(id=id).first()
+        # 获取字与新增一致用同一个序列化器
+        serializer = UserAddSerializer(instance=queryset)
+        result = {
+            'status': True,
+            'code': 200,
+            'data': serializer.data
+        }
+        return Response(result)
 
 class UserAdd(APIView):
     """新增用户接口"""
@@ -77,3 +103,50 @@ class UserAdd(APIView):
                    'code': '500',
                    'msg': serializer.errors}
             return Response(res)
+
+
+class UserUpdate(APIView):
+    """修改用户接口"""
+
+    def post(self, request):
+        id = request.data['id']
+        exists = User.objects.filter(id=id).exists()
+        if not exists:
+            res = {'status': False,
+                   'code': '500',
+                   'msg': "数据不存在"}
+            return Response(res)
+        data = request.data
+        serializer = UserAddSerializer(data=data)
+        if serializer.is_valid():
+            password = serializer.validated_data['password']
+            serializer.validated_data['password'] = md5(password)
+            serializer.validated_data['updated_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            User.objects.filter(pk=id).update(**serializer.validated_data)
+            res = {'status': True,
+                   'code': '200',
+                   'msg': "修改成功"}
+            return Response(res)
+        else:
+            res = {'status': False,
+                   'code': '500',
+                   'msg': serializer.errors}
+            return Response(res)
+
+
+class UserDel(APIView):
+    """删除用户接口"""
+
+    def post(self, request):
+        id = request.data['id']
+        exists = User.objects.filter(id=id).exists()
+        if not exists:
+            res = {'status': False,
+                   'code': '500',
+                   'msg': "数据不存在"}
+            return Response(res)
+        User.objects.filter(id=id).delete()
+        res = {'status': True,
+               'code': '200',
+               'msg': "删除成功"}
+        return Response(res)
