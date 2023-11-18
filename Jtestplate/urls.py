@@ -17,7 +17,9 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
+from testplate_server.apiviews import APIList, APIAdd
 from testplate_server.authview import LoginView, LogoutView
+from testplate_server.promoduleviews import ModuleList
 from testplate_server.userviews import UserAdd, UserDetail, UserList, UserUpdate, UserDel
 from testplate_server.views import TestView
 
@@ -26,10 +28,15 @@ urlpatterns = [
     path('test/', TestView.as_view()),
     path('login/', LoginView.as_view()),
     path('logout/', LogoutView.as_view()),
+    # 用户接口
     path('user/list/', UserList.as_view()),
     path('user/detail/', UserDetail.as_view()),
     path('user/add/', UserAdd.as_view()),
     path('user/update/', UserUpdate.as_view()),
     path('user/del/', UserDel.as_view()),
-
+    # 模块接口
+    path('module/list/', ModuleList.as_view()),
+    # api接口
+    path('api/list/', APIList.as_view()),
+    path('api/add/', APIAdd.as_view()),
 ]
