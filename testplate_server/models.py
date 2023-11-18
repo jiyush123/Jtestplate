@@ -23,3 +23,48 @@ class Token(models.Model):
     timeout_time = models.DateTimeField(verbose_name='失效时间',
                                         blank=True,
                                         null=True)
+
+
+class ProModule(models.Model):
+    """项目模块表"""
+    name = models.CharField(verbose_name='模块名称', max_length=50)
+    # 是否子模块
+    # 父模块id
+
+    def __str__(self):
+        return self.name
+
+
+class APIInfo(models.Model):
+    """API表"""
+    name = models.CharField(verbose_name='接口名称', max_length=200)
+    description = models.TextField(verbose_name='描述', blank=True, default='')
+    module = models.ForeignKey(to="ProModule", to_field="id", on_delete=models.SET_NULL,
+                               verbose_name='所属模块', blank=True, null=True)
+    method = models.CharField(verbose_name='请求方式', max_length=10)
+    uri = models.CharField(verbose_name='路径', max_length=200)
+    headers = models.JSONField(blank=True, null=True)
+    params = models.JSONField(blank=True, null=True)
+    body = models.JSONField(blank=True, null=True)
+    response = models.JSONField(blank=True, null=True)
+    status_choices = (
+        (1, "未开始"),
+        (2, "进行中"),
+        (3, "已完成")
+    )
+    status = models.SmallIntegerField(verbose_name='状态', choices=status_choices, default=1)
+    created_user = models.CharField(verbose_name='创建人', max_length=32)
+    updated_user = models.CharField(verbose_name='修改人', max_length=32)
+    created_time = models.DateTimeField(verbose_name='创建时间', auto_now_add=True)  # auto_now_add=True
+    updated_time = models.DateTimeField(verbose_name='修改时间')
+
+    class Meta:
+        db_table = 'api_info'  # 设置数据表名
+
+    def __str__(self):
+        return self.name
+
+    def get_module_name(self):
+        if self.module:
+            return self.module.name
+        return None
