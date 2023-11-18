@@ -7,7 +7,7 @@ from rest_framework.response import Response
 # Create your views here.
 from rest_framework.views import APIView
 
-from testplate_server.models import APIInfo,ProModule
+from testplate_server.models import APIInfo
 
 
 class ApiListSerializer(serializers.ModelSerializer):
@@ -37,12 +37,10 @@ class ApiAddSerializer(serializers.ModelSerializer):
         exclude = ["updated_time"]
 
 
-# class ApiUpdateSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = APIInfo
-#         fields = ['id', 'api_name', 'api_description', 'api_request_method',
-#                   'api_uri', 'status', 'api_params', 'api_data', 'api_response',
-#                   'updated_user', 'updated_time', 'api_headers']
+class ApiUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = APIInfo
+        exclude = ["created_user", "created_time", "updated_time"]
 
 
 class APIList(APIView):
@@ -79,26 +77,26 @@ class APIList(APIView):
         return Response(result)
 
 
-# class ApiInfoView(APIView):
-#     """获取API详情"""
-#
-#     def get(self, request):
-#         id = request.GET.get('id')
-#         exists = APIInfo.objects.filter(id=id).exists()
-#         if not exists:
-#             res = {'status': False,
-#                    'code': '500',
-#                    'msg': "数据不存在"}
-#             return Response(res)
-#         queryset = APIInfo.objects.filter(id=id).first()
-#         # 获取所有字段
-#         serializer = ApiInfoSerializer(instance=queryset)
-#         result = {
-#             'status': True,
-#             'code': 200,
-#             'data': serializer.data
-#         }
-#         return Response(result)
+class APIDetail(APIView):
+    """获取API详情"""
+
+    def get(self, request):
+        id = request.GET.get('id')
+        exists = APIInfo.objects.filter(id=id).exists()
+        if not exists:
+            res = {'status': False,
+                   'code': '500',
+                   'msg': "数据不存在"}
+            return Response(res)
+        queryset = APIInfo.objects.filter(id=id).first()
+        # 获取所有字段
+        serializer = ApiInfoSerializer(instance=queryset)
+        result = {
+            'status': True,
+            'code': 200,
+            'data': serializer.data
+        }
+        return Response(result)
 
 
 class APIAdd(APIView):
@@ -113,6 +111,51 @@ class APIAdd(APIView):
             res = {'status': True,
                    'code': '200',
                    'msg': "添加成功"}
+            return Response(res)
+        else:
+            res = {'status': False,
+                   'code': '500',
+                   'msg': serializer.errors}
+            return Response(res)
+
+
+class APIDel(APIView):
+    """删除接口"""
+
+    def post(self, request):
+        id = request.data['id']
+        exists = APIInfo.objects.filter(id=id).exists()
+        if not exists:
+            res = {'status': False,
+                   'code': '500',
+                   'msg': "数据不存在"}
+            return Response(res)
+        APIInfo.objects.filter(id=id).delete()
+        res = {'status': True,
+               'code': '200',
+               'msg': "删除成功"}
+        return Response(res)
+
+
+class APIUpdate(APIView):
+    """修改接口"""
+
+    def post(self, request):
+        id = request.data['id']
+        exists = APIInfo.objects.filter(id=id).exists()
+        if not exists:
+            res = {'status': False,
+                   'code': '500',
+                   'msg': "数据不存在"}
+            return Response(res)
+        data = request.data
+        serializer = ApiUpdateSerializer(data=data)
+        if serializer.is_valid():
+            serializer.validated_data['updated_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            APIInfo.objects.filter(pk=id).update(**serializer.validated_data)
+            res = {'status': True,
+                   'code': '200',
+                   'msg': "修改成功"}
             return Response(res)
         else:
             res = {'status': False,
