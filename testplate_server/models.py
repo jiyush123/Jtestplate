@@ -68,3 +68,18 @@ class APIInfo(models.Model):
         if self.module:
             return self.module.name
         return None
+
+
+class Environment(models.Model):
+    """环境表"""
+    name = models.CharField(verbose_name='环境名称', max_length=50)
+    protocol_choices = (
+        (1, "http"),
+        (2, "https")
+    )
+    protocol = models.SmallIntegerField(verbose_name='环境名称', choices=protocol_choices, default=1)
+    host = models.CharField(verbose_name='地址', max_length=50)
+    port = models.IntegerField(verbose_name='端口')
+
+    def __str__(self):
+        return self.name
