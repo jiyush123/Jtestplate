@@ -19,6 +19,8 @@ from django.urls import path
 
 from testplate_server.apiviews import APIList, APIDetail, APIAdd, APIDel, APIUpdate
 from testplate_server.authview import LoginView, LogoutView
+from testplate_server.environmentviews import EnvironmentList, EnvironmentDetail, EnvironmentAdd, EnvironmentUpdate, \
+    EnvironmentDel
 from testplate_server.promoduleviews import ModuleList
 from testplate_server.userviews import UserAdd, UserDetail, UserList, UserUpdate, UserDel
 from testplate_server.views import TestView
@@ -34,6 +36,12 @@ urlpatterns = [
     path('user/add/', UserAdd.as_view()),
     path('user/update/', UserUpdate.as_view()),
     path('user/del/', UserDel.as_view()),
+    # 环境接口
+    path('environment/list/', EnvironmentList.as_view()),
+    path('environment/detail/', EnvironmentDetail.as_view()),
+    path('environment/add/', EnvironmentAdd.as_view()),
+    path('environment/update/', EnvironmentUpdate.as_view()),
+    path('environment/del/', EnvironmentDel.as_view()),
     # 模块接口
     path('module/list/', ModuleList.as_view()),
     # api接口
