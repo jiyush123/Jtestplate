@@ -30,6 +30,16 @@ class EnvironmentList(APIView):
     def get(self, request):
         sq = request.GET
         excluded_keys = ['size', 'page']
+        if sq not in excluded_keys:
+            environment = Environment.objects.all()
+            serializer = EnvironmentSerializer(instance=environment, many=True)
+
+            result = {
+                'status': True,
+                'code': 200,
+                'data': serializer.data
+            }
+            return Response(result)
         filtered_params = {k: v for k, v in sq.items() if k not in excluded_keys}
         # 获取列表的查询字段后，根据需要进行模糊查询
         if 'name' in filtered_params:
