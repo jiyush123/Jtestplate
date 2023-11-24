@@ -17,7 +17,8 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
-from testplate_server.apiviews import APIList, APIDetail, APIAdd, APIDel, APIUpdate
+from testplate_server.apicaseviews import APICaseAdd
+from testplate_server.apiviews import APIList, APIDetail, APIAdd, APIDel, APIUpdate, APIDebug
 from testplate_server.authview import LoginView, LogoutView
 from testplate_server.environmentviews import EnvironmentList, EnvironmentDetail, EnvironmentAdd, EnvironmentUpdate, \
     EnvironmentDel
@@ -50,4 +51,7 @@ urlpatterns = [
     path('api/del/', APIDel.as_view()),
     path('api/detail/', APIDetail.as_view()),
     path('api/update/', APIUpdate.as_view()),
+    path('api/debug/', APIDebug.as_view()),
+    # 接口测试用例
+    path('apicase/add/', APICaseAdd.as_view()),
 ]
