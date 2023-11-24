@@ -4,6 +4,7 @@ from django.db.models import Count
 from django.shortcuts import render
 from rest_framework import serializers
 from rest_framework.response import Response
+import requests
 # Create your views here.
 from rest_framework.views import APIView
 
@@ -162,3 +163,31 @@ class APIUpdate(APIView):
                    'code': '500',
                    'msg': serializer.errors}
             return Response(res)
+
+
+class APIDebug(APIView):
+    """调试API接口"""
+
+    def post(self, request):
+        url = request.data['host'] + request.data['uri']
+        method = request.data['method']
+        data = {}
+
+        headers = {}
+        for k, v in request.data['headers'].items():
+            headers[k] = v['value']
+        if method == 'POST':
+            for k, v in request.data['body'].items():
+                data[k] = v['value']
+            response = requests.post(url=url, json=data, headers=headers)
+        else:
+            for k, v in request.data['params'].items():
+                data[k] = v['value']
+            response = requests.get(url=url, params=data, headers=headers)
+        result = {
+            'status': True,
+            'status_code': response.status_code,
+            'response': response.content.decode(),
+            'msg': "调试成功"
+        }
+        return Response(result)
