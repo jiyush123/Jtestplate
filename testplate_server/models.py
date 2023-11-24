@@ -28,6 +28,7 @@ class Token(models.Model):
 class ProModule(models.Model):
     """项目模块表"""
     name = models.CharField(verbose_name='模块名称', max_length=50)
+
     # 是否子模块
     # 父模块id
 
@@ -80,6 +81,59 @@ class Environment(models.Model):
     protocol = models.SmallIntegerField(verbose_name='环境名称', choices=protocol_choices, default=1)
     host = models.CharField(verbose_name='地址', max_length=50)
     port = models.IntegerField(verbose_name='端口')
+
+    def __str__(self):
+        return self.name
+
+
+class APICase(models.Model):
+    """测试用例表"""
+    name = models.CharField(verbose_name='用例名称', max_length=200)
+    level_choices = (
+        (1, "1"),
+        (2, "2"),
+        (3, "3")
+    )
+    level = models.SmallIntegerField(verbose_name='优先级', choices=level_choices)
+    status_choices = (
+        (1, "未开始"),
+        (2, "进行中"),
+        (3, "已完成")
+    )
+    status = models.SmallIntegerField(verbose_name='状态', choices=status_choices, default=1)
+    result_choices = (
+        (1, "成功"),
+        (2, "失败"),
+        (3, "无")
+    )
+    result = models.SmallIntegerField(verbose_name='结果', choices=result_choices, default=3)
+    created_user = models.CharField(verbose_name='创建人', max_length=32)
+    updated_user = models.CharField(verbose_name='修改人', max_length=32)
+    created_time = models.DateTimeField(verbose_name='创建时间', auto_now_add=True)
+    updated_time = models.DateTimeField(verbose_name='修改时间')
+
+    class Meta:
+        db_table = 'api_case'
+
+
+class APICaseStep(models.Model):
+    """测试用例步骤表"""
+    name = models.CharField(verbose_name='步骤名称', max_length=200)
+    sort = models.SmallIntegerField(verbose_name='第几步')
+    method = models.CharField(verbose_name='请求方式', max_length=10)
+    uri = models.CharField(verbose_name='路径', max_length=200)
+    headers = models.JSONField(blank=True, null=True)
+    params = models.JSONField(blank=True, null=True)
+    body = models.JSONField(blank=True, null=True)
+    # 断言
+    # 是否禁用
+    # 前置
+    # 后置
+    # 提取的参数
+    api_case = models.ForeignKey(to="APICase", to_field="id", on_delete=models.CASCADE, verbose_name='关联用例')
+
+    class Meta:
+        db_table = 'api_case_step'
 
     def __str__(self):
         return self.name
