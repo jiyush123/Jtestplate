@@ -103,3 +103,21 @@ class APICaseList(APIView):
             'size': size
         }
         return Response(result)
+
+
+class APICaseDel(APIView):
+    """删除接口测试用例"""
+
+    def post(self, request):
+        id = request.data['id']
+        exists = APICase.objects.filter(id=id).exists()
+        if not exists:
+            res = {'status': False,
+                   'code': '500',
+                   'msg': "数据不存在"}
+            return Response(res)
+        APICase.objects.filter(id=id).delete()
+        res = {'status': True,
+               'code': '200',
+               'msg': "删除成功"}
+        return Response(res)

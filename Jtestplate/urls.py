@@ -55,4 +55,5 @@ urlpatterns = [
     # 接口测试用例
     path('apicase/list/', APICaseList.as_view()),
     path('apicase/add/', APICaseAdd.as_view()),
+    path('apicase/del/', APICaseDel.as_view())
 ]
