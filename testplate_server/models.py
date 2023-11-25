@@ -107,6 +107,7 @@ class APICase(models.Model):
         (3, "无")
     )
     result = models.SmallIntegerField(verbose_name='结果', choices=result_choices, default=3)
+    last_time = models.DateTimeField(verbose_name='最后一次执行时间', blank=True, null=True)
     created_user = models.CharField(verbose_name='创建人', max_length=32)
     updated_user = models.CharField(verbose_name='修改人', max_length=32)
     created_time = models.DateTimeField(verbose_name='创建时间', auto_now_add=True)
