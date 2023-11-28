@@ -27,10 +27,30 @@ class APICaseListSerializer(serializers.ModelSerializer):
     level = serializers.CharField(source='get_level_display')
     result = serializers.CharField(source='get_result_display')
     last_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
+    updated_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
 
     class Meta:
         model = APICase
-        fields = ["id", "name", "level", "status", "result", "last_time"]
+        fields = ["id", "name", "level", "status", "result", "last_time", "updated_time"]
+
+
+class APICaseInfoSerializer(serializers.ModelSerializer):
+    status = serializers.CharField(source='get_status_display')
+    level = serializers.CharField(source='get_level_display')
+    result = serializers.CharField(source='get_result_display')
+    created_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
+    updated_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
+    last_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
+
+    class Meta:
+        model = APICase
+        fields = "__all__"
+
+
+class APICaseStepInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = APICaseStep
+        fields = "__all__"
 
 
 class APICaseAdd(APIView):
@@ -121,3 +141,29 @@ class APICaseDel(APIView):
                'code': '200',
                'msg': "删除成功"}
         return Response(res)
+
+
+class APICaseDetail(APIView):
+    """获取API详情"""
+
+    def get(self, request):
+        id = request.GET.get('id')
+        exists = APICase.objects.filter(id=id).exists()
+        if not exists:
+            res = {'status': False,
+                   'code': '500',
+                   'msg': "数据不存在"}
+            return Response(res)
+        case_queryset = APICase.objects.filter(id=id).first()
+        case_serializer = APICaseInfoSerializer(instance=case_queryset)
+
+        step_queryset = APICaseStep.objects.filter(api_case=case_serializer.data['id']).order_by('sort')
+        step_serializer = APICaseStepInfoSerializer(instance=step_queryset, many=True)
+
+        result = {
+            'status': True,
+            'code': 200,
+            'data': {"case": case_serializer.data,
+                     "steps": step_serializer.data}
+        }
+        return Response(result)
