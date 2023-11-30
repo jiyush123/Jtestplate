@@ -53,15 +53,19 @@ class APICaseStepInfoSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
+class ApiCaseUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = APICase
+        exclude = ["result", "created_user", "created_time", "updated_time", "last_time"]
+
+
 class APICaseAdd(APIView):
     """新增接口测试用例"""
 
     def post(self, request):
-        case = request.data
         steps = request.data.get('steps')
-        del case['steps']
 
-        case_serializer = APICaseAddSerializer(data=case)
+        case_serializer = APICaseAddSerializer(data=request.data)
 
         if case_serializer.is_valid():
             case_serializer.validated_data['updated_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -167,3 +171,48 @@ class APICaseDetail(APIView):
                      "steps": step_serializer.data}
         }
         return Response(result)
+
+
+class APICaseUpdate(APIView):
+    """修改接口测试用例"""
+
+    def post(self, request):
+        id = request.data['id']
+        exists = APICase.objects.filter(id=id).exists()
+        if not exists:
+            res = {'status': False,
+                   'code': '500',
+                   'msg': "数据不存在"}
+            return Response(res)
+        data = request.data
+        steps = request.data.get('steps')
+        case_serializer = ApiCaseUpdateSerializer(data=data)
+        if case_serializer.is_valid():
+            case_serializer.validated_data['updated_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            APICase.objects.filter(pk=id).update(**case_serializer.validated_data)
+
+        else:
+            res = {'status': False,
+                   'code': '500',
+                   'msg': case_serializer.errors}
+            return Response(res)
+        len_steps = len(steps)
+        # 循环编辑测试步骤
+        for i in range(len_steps):
+            step = steps[i]
+            step['api_case'] = id
+            step_serializer = APICaseStepInfoSerializer(data=step)
+            if step_serializer.is_valid():
+                APICaseStep.objects.filter(api_case=id, sort=str(i)).update(**step_serializer.validated_data)
+
+            else:
+                res = {'status': False,
+                       'code': '500',
+                       'msg': step_serializer.errors}
+                return Response(res)
+        # 删除多余步骤
+        APICaseStep.objects.filter(api_case=id, sort__gte=len_steps).delete()
+        res = {'status': True,
+               'code': '200',
+               'msg': "修改成功"}
+        return Response(res)
