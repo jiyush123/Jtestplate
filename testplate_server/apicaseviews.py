@@ -203,7 +203,14 @@ class APICaseUpdate(APIView):
             step['api_case'] = id
             step_serializer = APICaseStepInfoSerializer(data=step)
             if step_serializer.is_valid():
-                APICaseStep.objects.filter(api_case=id, sort=str(i)).update(**step_serializer.validated_data)
+                # 获取存在的步骤
+                step = APICaseStep.objects.filter(api_case=id, sort=str(i))
+                step_exists = step.exists()
+                # 存在就更新，不存在就新增
+                if step_exists:
+                    step.update(**step_serializer.validated_data)
+                else:
+                    step_serializer.save()
 
             else:
                 res = {'status': False,
