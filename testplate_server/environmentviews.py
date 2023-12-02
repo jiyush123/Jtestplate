@@ -30,26 +30,16 @@ class EnvironmentList(APIView):
     def get(self, request):
         sq = request.GET
         excluded_keys = ['size', 'page']
-        if sq not in excluded_keys:
-            environment = Environment.objects.all()
-            serializer = EnvironmentSerializer(instance=environment, many=True)
-
-            result = {
-                'status': True,
-                'code': 200,
-                'data': serializer.data
-            }
-            return Response(result)
         filtered_params = {k: v for k, v in sq.items() if k not in excluded_keys}
         # 获取列表的查询字段后，根据需要进行模糊查询
         if 'name' in filtered_params:
             filtered_params['name__contains'] = filtered_params['name']
             filtered_params.pop('name')
-        users = Environment.objects.filter(**filtered_params)
+        enviroments = Environment.objects.filter(**filtered_params)
         size = int(request.GET.get('size'))
         page = int(request.GET.get('page'))
         # 使用annotate()和values()方法进行分页查询
-        queryset = users.annotate(count=Count('id')).order_by('-id')
+        queryset = enviroments.annotate(count=Count('id')).order_by('-id')
         # slice方法进行分页
         start = (page - 1) * size
         end = start + size
@@ -59,7 +49,7 @@ class EnvironmentList(APIView):
             'status': True,
             'code': 200,
             'data': serializer.data,
-            'total': users.count(),
+            'total': enviroments.count(),
             'page': page,
             'size': size
         }
