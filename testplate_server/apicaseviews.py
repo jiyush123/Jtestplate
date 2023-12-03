@@ -1,13 +1,13 @@
 from datetime import datetime
 
 from django.db.models import Count
-from django.shortcuts import render
 from rest_framework import serializers
 from rest_framework.response import Response
 # Create your views here.
 from rest_framework.views import APIView
 
 from testplate_server.models import APICase, APICaseStep
+from testplate_server.utils.request import req_func
 
 
 class APICaseAddSerializer(serializers.ModelSerializer):
@@ -223,3 +223,55 @@ class APICaseUpdate(APIView):
                'code': '200',
                'msg': "修改成功"}
         return Response(res)
+
+
+class APICaseTest(APIView):
+    # 接收测试用例id
+    def post(self, request):
+        id = request.data['id']
+        exists = APICase.objects.filter(id=id).exists()
+        if not exists:
+            res = {'status': False,
+                   'code': '500',
+                   'msg': "数据不存在"}
+            return Response(res)
+        case_queryset = APICase.objects.filter(id=id).first()
+        case_serializer = APICaseInfoSerializer(instance=case_queryset)
+        APICase.objects.filter(pk=id).update(last_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+        step_queryset = APICaseStep.objects.filter(api_case=case_serializer.data['id']).order_by('sort')
+        self.step_serializer = APICaseStepInfoSerializer(instance=step_queryset, many=True)
+        self.len_step = len(self.step_serializer.data)
+        self.host = request.data['host']
+        success_num = 0
+        error_num = 0
+        response = []
+        for i in range(self.len_step):
+            result = self.test(self.step_serializer.data[i])
+            if result['status_code'] == 200:
+                success_num = success_num + 1
+            else:
+                error_num = error_num + 1
+            response.append(result['response'])
+        result = {
+            'status': True,
+            'code': '200',
+            'data': response,
+            'msg': "执行完成,成功{}个步骤，失败{}个步骤".format(success_num, error_num)
+        }
+        self.update_result(id, error_num)
+        return Response(result)
+
+    def test(self, step_data):
+        # 发请求
+        step_data['url'] = self.host + step_data['uri']
+        step_data = dict(step_data)
+        result = req_func(step_data)
+        return result
+
+    def update_result(self, id, err_nums):
+        # 更新用例结果
+        if err_nums > 0:
+            APICase.objects.filter(pk=id).update(result=2)
+        else:
+            APICase.objects.filter(pk=id).update(result=1)
