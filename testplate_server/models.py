@@ -138,3 +138,24 @@ class APICaseStep(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Report(models.Model):
+    """报告表"""
+    name = models.CharField(verbose_name='报告标题', max_length=200)
+    end_time = models.DateTimeField(verbose_name='结束时间', blank=True, null=True)
+
+    success_nums = models.IntegerField(verbose_name='成功用例数')
+    error_nums = models.IntegerField(verbose_name='失败用例数')
+    cases = models.JSONField(blank=True, null=True)
+    result_choices = (
+        (1, "成功"),
+        (2, "失败"),
+        (3, "无")
+    )
+    result = models.SmallIntegerField(verbose_name='结果', choices=result_choices, default=3)
+    created_user = models.CharField(verbose_name='创建人', max_length=32)
+    created_time = models.DateTimeField(verbose_name='创建时间', auto_now_add=True)
+
+    class Meta:
+        db_table = 'report'
