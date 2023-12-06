@@ -6,7 +6,7 @@ from rest_framework.response import Response
 # Create your views here.
 from rest_framework.views import APIView
 
-from testplate_server.models import APICase, APICaseStep
+from testplate_server.models import APICase, APICaseStep, Report
 from testplate_server.utils.request import req_func
 
 
@@ -228,38 +228,69 @@ class APICaseUpdate(APIView):
 class APICaseTest(APIView):
     # 接收测试用例id
     def post(self, request):
-        id = request.data['id']
-        exists = APICase.objects.filter(id=id).exists()
-        if not exists:
-            res = {'status': False,
-                   'code': '500',
-                   'msg': "数据不存在"}
-            return Response(res)
-        case_queryset = APICase.objects.filter(id=id).first()
-        case_serializer = APICaseInfoSerializer(instance=case_queryset)
-        APICase.objects.filter(pk=id).update(last_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        ids = request.data['ids']
+        success_cases = 0
+        error_cases = 0
+        # 生成报告
+        created_user = request.data['created_user']
+        report_id = self.save_report(ids, created_user)
+        for i in range(len(ids)):
+            exists = APICase.objects.filter(id=ids[i]).exists()
+            if not exists:
+                res = {'status': False,
+                       'code': '500',
+                       'msg': "数据不存在"}
+                return Response(res)
+            # 找到对应的数据
+            case_queryset = APICase.objects.filter(id=ids[i]).first()
+            case_serializer = APICaseInfoSerializer(instance=case_queryset)
+            APICase.objects.filter(pk=ids[i]).update(last_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
-        step_queryset = APICaseStep.objects.filter(api_case=case_serializer.data['id']).order_by('sort')
-        self.step_serializer = APICaseStepInfoSerializer(instance=step_queryset, many=True)
-        self.len_step = len(self.step_serializer.data)
-        self.host = request.data['host']
-        success_num = 0
-        error_num = 0
-        response = []
-        for i in range(self.len_step):
-            result = self.test(self.step_serializer.data[i])
-            if result['status_code'] == 200:
-                success_num = success_num + 1
+            step_queryset = APICaseStep.objects.filter(api_case=case_serializer.data['id']).order_by('sort')
+            self.step_serializer = APICaseStepInfoSerializer(instance=step_queryset, many=True)
+            self.len_step = len(self.step_serializer.data)
+            self.host = request.data['host']
+            success_num = 0
+            error_num = 0
+            response = []
+            # 执行用例
+            for j in range(self.len_step):
+                result = self.test(self.step_serializer.data[j])
+                if result['status_code'] == 200:
+                    success_num = success_num + 1
+                else:
+                    error_num = error_num + 1
+                response.append(result['response'])
+            # result = {
+            #     'status': True,
+            #     'code': '200',
+            #     'data': response,
+            #     'msg': "执行完成,成功{}个步骤，失败{}个步骤".format(success_num, error_num)
+            # }
+            case_result = self.update_result(ids[i], error_num)
+            if case_result:
+                success_cases = success_cases + 1
             else:
-                error_num = error_num + 1
-            response.append(result['response'])
+                error_cases = error_cases + 1
+            Report.objects.filter(pk=report_id).update(success_nums=success_cases, error_nums=error_cases)
+        if error_cases > 0:
+            Report.objects.filter(pk=report_id).update(result=2, status=2,
+                                                       end_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+            result = {
+                'status': True,
+                'code': '200',
+                # 'data': response,
+                'msg': "执行完成,成功{}个用例，失败{}个用例".format(success_cases, error_cases)
+            }
+            return Response(result)
+        Report.objects.filter(pk=report_id).update(result=1, status=2,
+                                                   end_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
         result = {
             'status': True,
             'code': '200',
-            'data': response,
-            'msg': "执行完成,成功{}个步骤，失败{}个步骤".format(success_num, error_num)
+            # 'data': response,
+            'msg': "执行完成,成功{}个用例，失败{}个用例".format(success_cases, error_cases)
         }
-        self.update_result(id, error_num)
         return Response(result)
 
     def test(self, step_data):
@@ -273,5 +304,22 @@ class APICaseTest(APIView):
         # 更新用例结果
         if err_nums > 0:
             APICase.objects.filter(pk=id).update(result=2)
+            case_result = False
+            return case_result
         else:
             APICase.objects.filter(pk=id).update(result=1)
+            case_result = True
+            return case_result
+
+    def save_report(self, case_ids, created_user):
+        # 生成报告
+        name = '测试报告' + datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        cases = case_ids
+        # result = 3
+        # status = 1
+        created_user = created_user
+        created_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        new_report = Report(name=name, cases=cases, created_user=created_user, created_time=created_time)
+        new_report.save()
+        report_id = new_report.id
+        return report_id
