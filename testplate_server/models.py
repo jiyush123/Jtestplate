@@ -145,14 +145,19 @@ class Report(models.Model):
     name = models.CharField(verbose_name='报告标题', max_length=200)
     end_time = models.DateTimeField(verbose_name='结束时间', blank=True, null=True)
 
-    success_nums = models.IntegerField(verbose_name='成功用例数')
-    error_nums = models.IntegerField(verbose_name='失败用例数')
-    cases = models.JSONField(blank=True, null=True)
+    success_nums = models.IntegerField(verbose_name='成功用例数', default=0)
+    error_nums = models.IntegerField(verbose_name='失败用例数', default=0)
+    cases = models.JSONField(verbose_name='用例', blank=True, null=True)
     result_choices = (
         (1, "成功"),
         (2, "失败"),
         (3, "无")
     )
+    status_choices = (
+        (1, "进行中"),
+        (2, "已完成")
+    )
+    status = models.SmallIntegerField(verbose_name='状态', choices=status_choices, default=1)
     result = models.SmallIntegerField(verbose_name='结果', choices=result_choices, default=3)
     created_user = models.CharField(verbose_name='创建人', max_length=32)
     created_time = models.DateTimeField(verbose_name='创建时间', auto_now_add=True)
