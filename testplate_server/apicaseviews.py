@@ -1,3 +1,4 @@
+import time
 from datetime import datetime
 
 from django.db.models import Count
@@ -233,7 +234,8 @@ class APICaseTest(APIView):
         error_cases = 0
         # 生成报告
         created_user = request.data['created_user']
-        report_id = self.save_report(ids, created_user)
+        report_id = self.save_report(created_user)
+        case_info = []
         for i in range(len(ids)):
             exists = APICase.objects.filter(id=ids[i]).exists()
             if not exists:
@@ -254,8 +256,11 @@ class APICaseTest(APIView):
             error_num = 0
             response = []
             # 执行用例
+            start_time = time.time_ns()  # 这是纳秒
             for j in range(self.len_step):
+
                 result = self.test(self.step_serializer.data[j])
+
                 if result['status_code'] == 200:
                     success_num = success_num + 1
                 else:
@@ -267,28 +272,31 @@ class APICaseTest(APIView):
             #     'data': response,
             #     'msg': "执行完成,成功{}个步骤，失败{}个步骤".format(success_num, error_num)
             # }
+            end_time = time.time_ns()
+            run_time = (end_time - start_time)/1000000  # 转化成ms
             case_result = self.update_result(ids[i], error_num)
+            case_info.append({'case_id': ids[i],
+                              'run_time': run_time,
+                              'case_result': case_result})
             if case_result:
                 success_cases = success_cases + 1
             else:
                 error_cases = error_cases + 1
-            Report.objects.filter(pk=report_id).update(success_nums=success_cases, error_nums=error_cases)
-        if error_cases > 0:
-            Report.objects.filter(pk=report_id).update(result=2, status=2,
+            Report.objects.filter(pk=report_id).update(cases=case_info, success_nums=success_cases,
+                                                       error_nums=error_cases,
                                                        end_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        if error_cases > 0:
+            Report.objects.filter(pk=report_id).update(result=2, status=2)
             result = {
                 'status': True,
                 'code': '200',
-                # 'data': response,
                 'msg': "执行完成,成功{}个用例，失败{}个用例".format(success_cases, error_cases)
             }
             return Response(result)
-        Report.objects.filter(pk=report_id).update(result=1, status=2,
-                                                   end_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        Report.objects.filter(pk=report_id).update(result=1, status=2)
         result = {
             'status': True,
             'code': '200',
-            # 'data': response,
             'msg': "执行完成,成功{}个用例，失败{}个用例".format(success_cases, error_cases)
         }
         return Response(result)
@@ -297,7 +305,9 @@ class APICaseTest(APIView):
         # 发请求
         step_data['url'] = self.host + step_data['uri']
         step_data = dict(step_data)
+        # 开始时间
         result = req_func(step_data)
+        # 结束时间
         return result
 
     def update_result(self, id, err_nums):
@@ -311,15 +321,12 @@ class APICaseTest(APIView):
             case_result = True
             return case_result
 
-    def save_report(self, case_ids, created_user):
+    def save_report(self, created_user):
         # 生成报告
         name = '测试报告' + datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        cases = case_ids
-        # result = 3
-        # status = 1
         created_user = created_user
         created_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        new_report = Report(name=name, cases=cases, created_user=created_user, created_time=created_time)
+        new_report = Report(name=name, created_user=created_user, created_time=created_time)
         new_report.save()
         report_id = new_report.id
         return report_id
