@@ -24,6 +24,10 @@ class LoginView(APIView):
             # 跟user表的账号密码对比
             username = serializer.validated_data['username']
             password = md5(serializer.validated_data['password'])
+            exists = User.objects.filter(username=username).exists()
+            if not exists:
+                res = {"status": False, "code": 500, "msg": "账号或密码不正确"}
+                return Response(res)
             user = User.objects.filter(username=username).first()
             if password == user.password:
                 # 密码正确
