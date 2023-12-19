@@ -8,7 +8,7 @@ import requests
 # Create your views here.
 from rest_framework.views import APIView
 
-from testplate_server.models import APIInfo
+from testplate_server.models import APIInfo, ProModule
 
 
 class ApiListSerializer(serializers.ModelSerializer):
@@ -23,8 +23,9 @@ class ApiListSerializer(serializers.ModelSerializer):
 
 
 class ApiInfoSerializer(serializers.ModelSerializer):
-    # 这样就可以获取枚举值的值
+    # 这样就可以获取枚举值的值，API列表跟详情用同一个序列化器，前端根据需要取字段显示
     status = serializers.CharField(source='get_status_display')
+    module = serializers.CharField(source='get_module_name')
     updated_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
 
     class Meta:
@@ -55,6 +56,10 @@ class APIList(APIView):
         if 'name' in filtered_params:
             filtered_params['name__contains'] = filtered_params['name']
             filtered_params.pop('name')
+        if 'module' in filtered_params:
+            module_ids = ProModule.objects.filter(name__contains=filtered_params['module']).values_list('id', flat=True)
+            filtered_params['module_id__in'] = module_ids
+            filtered_params.pop('module')
 
         api_info = APIInfo.objects.filter(**filtered_params)
         size = int(request.GET.get('size'))
@@ -65,7 +70,8 @@ class APIList(APIView):
         start = (page - 1) * size
         end = start + size
         queryset = queryset[start:end]
-        serializer = ApiListSerializer(instance=queryset, many=True)
+        # serializer = ApiListSerializer(instance=queryset, many=True)
+        serializer = ApiInfoSerializer(instance=queryset, many=True)
 
         result = {
             'status': True,
