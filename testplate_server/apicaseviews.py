@@ -254,18 +254,21 @@ class APICaseTest(APIView):
             self.host = request.data['host']
             success_num = 0
             error_num = 0
-            response = []
+            response = []  # 还没存库
             # 执行用例
             start_time = time.time_ns()  # 这是纳秒
             for j in range(self.len_step):
+                try:
+                    result = self.test(self.step_serializer.data[j])
 
-                result = self.test(self.step_serializer.data[j])
-
-                if result['status_code'] == 200:
-                    success_num = success_num + 1
-                else:
+                    if result['status_code'] == 200:
+                        success_num = success_num + 1
+                    else:
+                        error_num = error_num + 1
+                    response.append(result['response'])
+                except Exception as e:
                     error_num = error_num + 1
-                response.append(result['response'])
+                    response.append(e)
             # result = {
             #     'status': True,
             #     'code': '200',
