@@ -49,7 +49,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # 'testplate_server.middleware.auth.Auth'
+    # 自定义中间件，验证登录状态
+    'testplate_server.middleware.auth.Auth'
 ]
 
 CORS_ALLOW_ALL_ORIGINS = False
