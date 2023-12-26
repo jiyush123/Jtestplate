@@ -10,7 +10,7 @@ def generate_token():
 
 # 设置Token有效期
 def get_expiration_time():
-    return datetime.datetime.now() + datetime.timedelta(hours=1)
+    return datetime.datetime.now() + datetime.timedelta(hours=8)
 
 
 # 返回Token给用户
@@ -22,4 +22,5 @@ def generate_and_return_token():
 
 
 if __name__ == '__main__':
-    print(generate_and_return_token()[0])
+    print(generate_and_return_token()[0], generate_and_return_token()[1])
+
