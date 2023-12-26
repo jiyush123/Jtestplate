@@ -1,4 +1,6 @@
 # from django.shortcuts import redirect
+import datetime
+
 from django.utils.deprecation import MiddlewareMixin
 # from rest_framework.response import Response
 from django.http import JsonResponse
@@ -21,6 +23,14 @@ class Auth(MiddlewareMixin):
             token = Token.objects.filter(token=token).first()
             if not token:
                 # 这个是django返回的路径，如果是用前后端分离的方式，需要返回一个code让前端重定向
+                result = {
+                    'status': False,
+                    'code': 401,
+                    'msg': "登录超时，请重新登录"
+                }
+                return JsonResponse(result)
+            elif token.timeout_time < datetime.datetime.now():
+                Token.objects.filter(token=token.token).delete()
                 result = {
                     'status': False,
                     'code': 401,

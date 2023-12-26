@@ -39,7 +39,8 @@ class LoginView(APIView):
                     old_token.delete()
                 # 创建新的Token
                 token = generate_and_return_token()[0]
-                Token.objects.create(token=token, user_id=user.id)
+                timeout_time = generate_and_return_token()[1]
+                Token.objects.create(token=token, user_id=user.id, timeout_time=timeout_time)
                 login_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 User.objects.filter(id=user.id).update(login_time=login_time)
                 res = {"status": True, "code": 200, "data": {"user_id": user.id, "name": user.name, "token": token},
