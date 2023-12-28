@@ -9,6 +9,7 @@ import requests
 from rest_framework.views import APIView
 
 from testplate_server.models import APIInfo, ProModule
+from testplate_server.utils.request import req_func
 
 
 class ApiListSerializer(serializers.ModelSerializer):
@@ -25,6 +26,7 @@ class ApiListSerializer(serializers.ModelSerializer):
 class ApiInfoSerializer(serializers.ModelSerializer):
     # 这样就可以获取枚举值的值，API列表跟详情用同一个序列化器，前端根据需要取字段显示
     status = serializers.CharField(source='get_status_display')
+    mod_id = serializers.IntegerField(source='module_id')
     module = serializers.CharField(source='get_module_name')
     updated_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
 
@@ -175,25 +177,6 @@ class APIDebug(APIView):
     """调试API接口"""
 
     def post(self, request):
-        url = request.data['host'] + request.data['uri']
-        method = request.data['method']
-        data = {}
-
-        headers = {}
-        for k, v in request.data['headers'].items():
-            headers[k] = v['value']
-        if method == 'POST':
-            for k, v in request.data['body'].items():
-                data[k] = v['value']
-            response = requests.post(url=url, json=data, headers=headers)
-        else:
-            for k, v in request.data['params'].items():
-                data[k] = v['value']
-            response = requests.get(url=url, params=data, headers=headers)
-        result = {
-            'status': True,
-            'status_code': response.status_code,
-            'response': response.content.decode(),
-            'msg': "调试成功"
-        }
+        request.data['url'] = request.data['host'] + request.data['uri']
+        result = req_func(request.data)
         return Response(result)
