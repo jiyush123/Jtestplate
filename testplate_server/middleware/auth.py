@@ -28,7 +28,7 @@ class Auth(MiddlewareMixin):
                     'code': 401,
                     'msg': "登录超时，请重新登录"
                 }
-                return JsonResponse(result)
+                return JsonResponse(result,json_dumps_params={"ensure_ascii": False})
             elif token.timeout_time < datetime.datetime.now():
                 Token.objects.filter(token=token.token).delete()
                 result = {
@@ -36,14 +36,14 @@ class Auth(MiddlewareMixin):
                     'code': 401,
                     'msg': "登录超时，请重新登录"
                 }
-                return JsonResponse(result)
+                return JsonResponse(result,json_dumps_params={"ensure_ascii": False})
         except:
             result = {
                 'status': False,
                 'code': 401,
                 'msg': "登录超时，请重新登录"
             }
-            return JsonResponse(result)
+            return JsonResponse(result,json_dumps_params={"ensure_ascii": False})
 
     # def process_response(self, request, response):
     #     return response
