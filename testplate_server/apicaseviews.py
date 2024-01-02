@@ -226,6 +226,35 @@ class APICaseUpdate(APIView):
         return Response(res)
 
 
+class APICaseDebug(APIView):
+    def post(self, request):
+        print(request.data)
+        steps = request.data.get('steps')
+        host = request.data.get('env')
+        # 获取用例步骤
+        len_steps = len(steps)
+        # 遍历步骤，要记录每一次的返回和耗时
+        resp = []
+        steps_time = []
+        for i in range(len_steps):
+            start_time = time.time_ns()
+            step = steps[i]
+            url = host + step.get('uri')
+            req_data = {'url': url, 'method': step.get('method'), 'headers': step.get('headers'),
+                        'params': step.get('params'), 'body': step.get('body')}
+            result = req_func(req_data)
+            end_time = time.time_ns()
+            run_time = (end_time - start_time) / 1000000
+            steps_time.append(run_time)
+            resp.append(result)
+
+        res = {'status': True,
+               'code': '200',
+               'data': {'res': resp, 'time': steps_time},
+               'msg': "调试完成"}
+        return Response(res)
+
+
 class APICaseTest(APIView):
     # 接收测试用例id
     def post(self, request):
@@ -276,7 +305,7 @@ class APICaseTest(APIView):
             #     'msg': "执行完成,成功{}个步骤，失败{}个步骤".format(success_num, error_num)
             # }
             end_time = time.time_ns()
-            run_time = (end_time - start_time)/1000000  # 转化成ms
+            run_time = (end_time - start_time) / 1000000  # 转化成ms
             case_result = self.update_result(ids[i], error_num)
             case_info.append({'case_id': ids[i],
                               'run_time': run_time,
