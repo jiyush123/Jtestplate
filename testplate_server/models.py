@@ -127,6 +127,7 @@ class APICaseStep(models.Model):
     params = models.JSONField(blank=True, null=True)
     body = models.JSONField(blank=True, null=True)
     # 断言
+    assert_result = models.JSONField(verbose_name='断言', blank=True, null=True)
     # 是否禁用
     # 前置
     # 后置
