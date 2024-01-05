@@ -241,7 +241,8 @@ class APICaseDebug(APIView):
             step = steps[i]
             url = host + step.get('uri')
             req_data = {'url': url, 'method': step.get('method'), 'headers': step.get('headers'),
-                        'params': step.get('params'), 'body': step.get('body')}
+                        'params': step.get('params'), 'body': step.get('body'),
+                        'assert_result': step.get('assert_result')}
             result = req_func(req_data)
             end_time = time.time_ns()
             run_time = (end_time - start_time) / 1000000
