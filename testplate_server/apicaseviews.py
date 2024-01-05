@@ -290,11 +290,11 @@ class APICaseTest(APIView):
             for j in range(self.len_step):
                 try:
                     result = self.test(self.step_serializer.data[j])
-
-                    if result['status_code'] == 200:
-                        success_num = success_num + 1
-                    else:
+                    # 根据断言结果判断是否成功
+                    if 'error' in result['result']:
                         error_num = error_num + 1
+                    else:
+                        success_num = success_num + 1
                     response.append(result['response'])
                 except Exception as e:
                     error_num = error_num + 1
