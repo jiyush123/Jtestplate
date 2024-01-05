@@ -30,16 +30,16 @@ def req_func(req_data):
             response = requests.get(url=url, params=params, headers=headers)
         else:
             result = {
-                'status': str(False),
-                'status_code': '500',
+                'status': False,
+                'status_code': 500,
                 'msg': "暂不支持请求方式"
             }
             return result
         status_code = response.status_code
         response = json.loads(response.content.decode())
         result = {
-            'status': str(True),
-            'status_code': str(status_code),
+            'status': True,
+            'status_code': status_code,
             'response': response,
             'msg': "执行成功",
             'result': []
@@ -48,16 +48,25 @@ def req_func(req_data):
             result['result'].append('success')
         else:
             for k, v in assert_result.items():
+                # 将前端传过来的.字符串切割成引用目标字符串，最后得到的值再对比目标值v
+                key = k.split('.')
+                assert_response = result
+                for i in key:
+                    if i in assert_response:
+                        assert_response = assert_response[i]
+                    else:
+                        assert_response = None
+                        break
 
-                if result.get(k) == v:
+                if assert_response == v:
                     result['result'].append('success')
                 else:
                     result['result'].append('error')
         return result
     except Exception as e:
         result = {
-            'status': str(False),
-            'status_code': '500',
+            'status': False,
+            'status_code': 500,
             'response': e,
             'msg': "执行失败"
         }
