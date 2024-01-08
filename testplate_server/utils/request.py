@@ -11,6 +11,7 @@ def req_func(req_data):
         params = {}
         body = {}
         assert_result = {}
+        print(req_data)
         if req_data['body'] is not None:
             for k, v in req_data['body'].items():
                 body[k] = v['value']
@@ -20,9 +21,12 @@ def req_func(req_data):
         if req_data['headers'] is not None:
             for k, v in req_data['headers'].items():
                 headers[k] = v['value']
-        if req_data['assert_result'] is not None:
-            for k, v in req_data['assert_result'].items():
-                assert_result[k] = v['value']
+        try:
+            if req_data['assert_result'] is not None:
+                for k, v in req_data['assert_result'].items():
+                    assert_result[k] = v['value']
+        except:
+            assert_result = {}
 
         if method == 'POST':
             response = requests.post(url=url, json=body, headers=headers)
