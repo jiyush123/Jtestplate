@@ -132,6 +132,7 @@ class APICaseStep(models.Model):
     # 前置
     # 后置
     # 提取的参数
+    extract = models.JSONField(verbose_name='提取参数', blank=True, null=True)
     api_case = models.ForeignKey(to="APICase", to_field="id", on_delete=models.CASCADE, verbose_name='关联用例')
 
     class Meta:
