@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from testplate_server.models import APICase, APICaseStep, Report
+from testplate_server.utils.extract_params import extract_func
 from testplate_server.utils.request import req_func
 
 
@@ -228,7 +229,7 @@ class APICaseUpdate(APIView):
 
 class APICaseDebug(APIView):
     def post(self, request):
-        print(request.data)
+        # print(request.data)
         steps = request.data.get('steps')
         host = request.data.get('env')
         # 获取用例步骤
@@ -236,18 +237,48 @@ class APICaseDebug(APIView):
         # 遍历步骤，要记录每一次的返回和耗时
         resp = []
         steps_time = []
+        extract_data = {}
         for i in range(len_steps):
             start_time = time.time_ns()
             step = steps[i]
+
             url = host + step.get('uri')
             req_data = {'url': url, 'method': step.get('method'), 'headers': step.get('headers'),
                         'params': step.get('params'), 'body': step.get('body'),
                         'assert_result': step.get('assert_result')}
+            # url是否含${}，循环查找请求头，请求参数，请求体，断言中v['value']是否含${}
+            req_data['url'] = extract_func(req_data['url'], extract_data)
+            if req_data['headers'] is not None:
+                for k, v in req_data['headers'].items():
+                    v['value'] = extract_func(v.get('value'), extract_data)
+            if req_data['params'] is not None:
+                for k, v in req_data['params'].items():
+                    v['value'] = extract_func(v.get('value'), extract_data)
+            if req_data['body'] is not None:
+                for k, v in req_data['body'].items():
+                    v['value'] = extract_func(v.get('value'), extract_data)
+            if req_data['assert_result'] is not None:
+                for k, v in req_data['assert_result'].items():
+                    v['value'] = extract_func(v.get('value'), extract_data)
             result = req_func(req_data)
             end_time = time.time_ns()
             run_time = (end_time - start_time) / 1000000
             steps_time.append(run_time)
             resp.append(result)
+
+            # 获取提取参数，根据jsonpath获取响应值extract_val
+            extract = step.get('extract')
+            for k, v in extract.items():
+                extract_jsonpath = v['value'].split('.')
+                extract_val = result
+                for i in extract_jsonpath:
+                    if i in extract_val:
+                        extract_val = extract_val[i]
+                    else:
+                        extract_val = None
+                        break
+                # 存到临时字典extract_data中
+                extract_data[k] = extract_val
 
         res = {'status': True,
                'code': '200',
@@ -287,9 +318,38 @@ class APICaseTest(APIView):
             response = []  # 还没存库
             # 执行用例
             start_time = time.time_ns()  # 这是纳秒
+            extract_data = {}  # 提取参数临时变量
             for j in range(self.len_step):
                 try:
-                    result = self.test(self.step_serializer.data[j])
+                    step_data = dict(self.step_serializer.data[j])
+                    step_data['uri'] = extract_func(step_data['uri'], extract_data)
+                    if step_data['headers'] is not None:
+                        for k, v in step_data['headers'].items():
+                            v['value'] = extract_func(v.get('value'), extract_data)
+                    if step_data['params'] is not None:
+                        for k, v in step_data['params'].items():
+                            v['value'] = extract_func(v.get('value'), extract_data)
+                    if step_data['body'] is not None:
+                        for k, v in step_data['body'].items():
+                            v['value'] = extract_func(v.get('value'), extract_data)
+                    if step_data['assert_result'] is not None:
+                        for k, v in step_data['assert_result'].items():
+                            v['value'] = extract_func(v.get('value'), extract_data)
+                    result = self.test(step_data)
+                    # 获取提取参数，根据jsonpath获取响应值extract_val
+                    extract = step_data.get('extract')
+                    if step_data['extract'] is not None:
+                        for k, v in extract.items():
+                            extract_jsonpath = v['value'].split('.')
+                            extract_val = result
+                            for obj in extract_jsonpath:
+                                if obj in extract_val:
+                                    extract_val = extract_val[obj]
+                                else:
+                                    extract_val = None
+                                    break
+                            # 存到临时字典extract_data中
+                            extract_data[k] = extract_val
                     # 根据断言结果判断是否成功
                     if 'error' in result['result']:
                         error_num = error_num + 1
@@ -337,7 +397,6 @@ class APICaseTest(APIView):
     def test(self, step_data):
         # 发请求
         step_data['url'] = self.host + step_data['uri']
-        step_data = dict(step_data)
         # 开始时间
         result = req_func(step_data)
         # 结束时间
