@@ -163,6 +163,7 @@ class Report(models.Model):
     result = models.SmallIntegerField(verbose_name='结果', choices=result_choices, default=3)
     created_user = models.CharField(verbose_name='创建人', max_length=32)
     created_time = models.DateTimeField(verbose_name='创建时间', auto_now_add=True)
+    total_time = models.IntegerField(verbose_name='执行时间', blank=True, null=True)
 
     class Meta:
         db_table = 'report'

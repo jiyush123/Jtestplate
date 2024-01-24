@@ -294,6 +294,7 @@ class APICaseTest(APIView):
         success_cases = 0
         error_cases = 0
         # 生成报告
+        start_run_time = time.time_ns()  # 报告开始时间
         created_user = request.data['created_user']
         report_id = self.save_report(created_user)
         case_info = []
@@ -371,6 +372,7 @@ class APICaseTest(APIView):
             case_info.append({'case_id': ids[i],
                               'run_time': run_time,
                               'case_result': case_result})
+
             if case_result:
                 success_cases = success_cases + 1
             else:
@@ -378,15 +380,16 @@ class APICaseTest(APIView):
             Report.objects.filter(pk=report_id).update(cases=case_info, success_nums=success_cases,
                                                        error_nums=error_cases,
                                                        end_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        total_time = (time.time_ns() - start_run_time) / 1000000  # 报告运行时间ms单位
         if error_cases > 0:
-            Report.objects.filter(pk=report_id).update(result=2, status=2)
+            Report.objects.filter(pk=report_id).update(result=2, status=2, total_time=total_time)
             result = {
                 'status': True,
                 'code': '200',
                 'msg': "执行完成,成功{}个用例，失败{}个用例".format(success_cases, error_cases)
             }
             return Response(result)
-        Report.objects.filter(pk=report_id).update(result=1, status=2)
+        Report.objects.filter(pk=report_id).update(result=1, status=2, total_time=total_time)
         result = {
             'status': True,
             'code': '200',
