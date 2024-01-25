@@ -370,6 +370,7 @@ class APICaseTest(APIView):
             run_time = (end_time - start_time) / 1000000  # 转化成ms
             case_result = self.update_result(ids[i], error_num)
             case_info.append({'case_id': ids[i],
+                              'case_name': case_serializer.data['name'],
                               'run_time': run_time,
                               'case_result': case_result})
 
