@@ -126,12 +126,10 @@ class APICaseStep(models.Model):
     headers = models.JSONField(blank=True, null=True)
     params = models.JSONField(blank=True, null=True)
     body = models.JSONField(blank=True, null=True)
-    # 断言
     assert_result = models.JSONField(verbose_name='断言', blank=True, null=True)
     # 是否禁用
     # 前置
     # 后置
-    # 提取的参数
     extract = models.JSONField(verbose_name='提取参数', blank=True, null=True)
     api_case = models.ForeignKey(to="APICase", to_field="id", on_delete=models.CASCADE, verbose_name='关联用例')
 
@@ -167,3 +165,22 @@ class Report(models.Model):
 
     class Meta:
         db_table = 'report'
+
+
+class ReportCaseInfo(models.Model):
+    """报告用例详情表"""
+    case_id = models.IntegerField(verbose_name='用例id', blank=False)
+    step_name = models.CharField(verbose_name='步骤名称', max_length=200)
+    run_time = models.IntegerField(verbose_name='执行时间', blank=True, null=True)
+    step_result_choices = (
+        (1, "成功"),
+        (2, "失败"),
+        (3, "无")
+    )
+    step_result = models.SmallIntegerField(verbose_name='结果', choices=step_result_choices, default=3)
+    step_response = models.JSONField(verbose_name='响应', blank=True, null=True)
+    assert_info = models.JSONField(verbose_name='断言结果', blank=True, null=True)
+    report = models.ForeignKey(to="Report", to_field="id", on_delete=models.CASCADE, verbose_name='关联报告')
+
+    class Meta:
+        db_table = 'report_case_info'
