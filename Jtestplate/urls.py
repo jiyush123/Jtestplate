@@ -24,7 +24,7 @@ from testplate_server.authview import LoginView, LogoutView
 from testplate_server.environmentviews import EnvironmentList, EnvironmentDetail, EnvironmentAdd, EnvironmentUpdate, \
     EnvironmentDel
 from testplate_server.promoduleviews import ModuleList
-from testplate_server.reportviews import ReportList, ReportDel, ReportDetail
+from testplate_server.reportviews import ReportList, ReportDel, ReportDetail, ReportCaseDetail
 from testplate_server.userviews import UserAdd, UserDetail, UserList, UserUpdate, UserDel
 from testplate_server.views import TestView
 
@@ -66,4 +66,5 @@ urlpatterns = [
     path('report/list/', ReportList.as_view()),
     path('report/del/', ReportDel.as_view()),
     path('report/detail/', ReportDetail.as_view()),
+    path('report/case/detail/', ReportCaseDetail.as_view()),
 ]
