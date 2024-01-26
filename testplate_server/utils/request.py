@@ -46,10 +46,12 @@ def req_func(req_data):
             'status_code': status_code,
             'response': response,
             'msg': "执行成功",
-            'result': []
         }
+        assert_info = []
         if assert_result == {}:
-            result['result'].append('success')
+            assert_info.append({'assert_expect': '',
+                                'assert_value': '',
+                                'assert_result': 'success'})
         else:
             for k, v in assert_result.items():
                 # 将前端传过来的.字符串切割成引用目标字符串，最后得到的值再对比目标值v
@@ -63,10 +65,14 @@ def req_func(req_data):
                         break
 
                 if assert_response == v:
-                    result['result'].append('success')
+                    assert_info.append({'assert_expect': v,
+                                        'assert_value': assert_response,
+                                        'assert_result': 'success'})
                 else:
-                    result['result'].append('error')
-        return result
+                    assert_info.append({'assert_expect': v,
+                                        'assert_value': assert_response,
+                                        'assert_result': 'error'})
+        return result, assert_info
     except Exception as e:
         result = {
             'status': False,
@@ -74,5 +80,5 @@ def req_func(req_data):
             'response': e,
             'msg': "执行失败"
         }
-        return result
-
+        assert_info = []
+        return result, assert_info
