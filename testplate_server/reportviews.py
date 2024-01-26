@@ -7,7 +7,7 @@ from rest_framework.response import Response
 # Create your views here.
 from rest_framework.views import APIView
 
-from testplate_server.models import Report
+from testplate_server.models import Report, ReportCaseInfo
 
 
 class ReportListSerializer(serializers.ModelSerializer):
@@ -101,3 +101,32 @@ class ReportDel(APIView):
                'code': '200',
                'msg': "删除成功"}
         return Response(res)
+
+
+class ReportCaseInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ReportCaseInfo
+        fields = "__all__"
+
+
+class ReportCaseDetail(APIView):
+    """获取报告用例详情"""
+
+    def get(self, request):
+        case_id = request.GET.get('case_id')
+        report_id = request.GET.get('report_id')
+        exists = ReportCaseInfo.objects.filter(case_id=case_id, report_id=report_id).exists()
+        if not exists:
+            res = {'status': False,
+                   'code': '500',
+                   'msg': "数据不存在"}
+            return Response(res)
+        queryset = ReportCaseInfo.objects.filter(case_id=case_id, report_id=report_id)
+        # 获取所有字段
+        serializer = ReportCaseInfoSerializer(instance=queryset,many=True)
+        result = {
+            'status': True,
+            'code': 200,
+            'data': serializer.data
+        }
+        return Response(result)
