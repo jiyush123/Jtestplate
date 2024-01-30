@@ -65,11 +65,11 @@ def req_func(req_data):
                         break
 
                 if assert_response == v:
-                    assert_info.append({'assert_expect': v,
+                    assert_info.append({'assert_expect': {k: v},
                                         'assert_value': assert_response,
                                         'assert_result': 'success'})
                 else:
-                    assert_info.append({'assert_expect': v,
+                    assert_info.append({'assert_expect': {k: v},
                                         'assert_value': assert_response,
                                         'assert_result': 'error'})
         return result, assert_info
