@@ -23,6 +23,7 @@ from testplate_server.apiviews import APIList, APIDetail, APIAdd, APIDel, APIUpd
 from testplate_server.authview import LoginView, LogoutView
 from testplate_server.environmentviews import EnvironmentList, EnvironmentDetail, EnvironmentAdd, EnvironmentUpdate, \
     EnvironmentDel
+from testplate_server.homeviews import APICountView, APICaseCountView
 from testplate_server.promoduleviews import ModuleList
 from testplate_server.reportviews import ReportList, ReportDel, ReportDetail, ReportCaseDetail
 from testplate_server.userviews import UserAdd, UserDetail, UserList, UserUpdate, UserDel
@@ -67,4 +68,7 @@ urlpatterns = [
     path('report/del/', ReportDel.as_view()),
     path('report/detail/', ReportDetail.as_view()),
     path('report/case/detail/', ReportCaseDetail.as_view()),
+    # 首页统计数据
+    path('api/acount/', APICountView.as_view()),
+    path('apicase/acount/', APICaseCountView.as_view()),
 ]
