@@ -236,7 +236,6 @@ class APICaseDebug(APIView):
         len_steps = len(steps)
         # 遍历步骤，要记录每一次的返回和耗时
         resp = []
-        asserts_info = []
         steps_time = []
         extract_data = {}
         for i in range(len_steps):
@@ -265,16 +264,14 @@ class APICaseDebug(APIView):
             end_time = time.time_ns()
             run_time = (end_time - start_time) / 1000000
             steps_time.append(run_time)
-            result = debug_result[0]
-            assert_info = debug_result[1]
-            resp.append(result)
-            asserts_info.append(assert_info)
+
+            resp.append(debug_result)
 
             # 获取提取参数，根据jsonpath获取响应值extract_val
             extract = step.get('extract')
             for k, v in extract.items():
                 extract_jsonpath = v['value'].split('.')
-                extract_val = result
+                extract_val = debug_result
                 for i in extract_jsonpath:
                     if i in extract_val:
                         extract_val = extract_val[i]
@@ -286,7 +283,7 @@ class APICaseDebug(APIView):
 
         res = {'status': True,
                'code': '200',
-               'data': {'res': resp, 'asserts_info': asserts_info, 'time': steps_time},
+               'data': {'res': resp, 'time': steps_time},
                'msg': "调试完成"}
         return Response(res)
 
