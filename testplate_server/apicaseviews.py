@@ -315,7 +315,6 @@ class APICaseTest(APIView):
             self.step_serializer = APICaseStepInfoSerializer(instance=step_queryset, many=True)
             self.len_step = len(self.step_serializer.data)
             self.host = request.data['host']
-            # success_num = 0
             error_num = 0
             response = []  # 还没存库
             # 执行用例
@@ -340,8 +339,8 @@ class APICaseTest(APIView):
                     # 执行用例，提取结果和时间和断言详情
                     result_info = self.test(step_data)
                     result = result_info[0]
-                    assert_info = result_info[1]
-                    active_time = result_info[2]
+                    assert_info = result.get('assert_info')
+                    active_time = result_info[1]
                     # 获取提取参数，根据jsonpath获取响应值extract_val
                     extract = step_data.get('extract')
                     if step_data['extract'] is not None:
@@ -358,17 +357,20 @@ class APICaseTest(APIView):
                             extract_data[k] = extract_val
                     # 根据断言结果判断步骤是否成功
                     step_result = 3
-                    for step_assert in range(len(assert_info)):
-                        if assert_info[step_assert]['assert_result'] == 'error':
-                            error_num = error_num + 1
+                    # assert_info {'key': {'expect': '', 'value': '', 'result': 'success'}}
+                    for k, v in assert_info.items():
+                        if v.get('result') == 'error':
+                            error_num += 1
                             step_result = 2
                             break
                     if step_result != 2:
                         step_result = 1
                     response.append(result['response'])
                     # 保存到用例详情表
+                    step_response = {k: v for k, v in result.items() if k != 'assert_info'}
+
                     self.save_report_case_info(case_id=ids[i], step_name=step_data['name'], run_time=active_time,
-                                               step_result=step_result, step_response=result,
+                                               step_result=step_result, step_response=step_response,
                                                assert_info=assert_info, report_id=report_id)
 
                 except Exception as e:
@@ -409,13 +411,12 @@ class APICaseTest(APIView):
         # 开始时间
         start_time = time.time_ns()
         test_result = req_func(step_data)
-        result = test_result[0]
+        result = test_result
         # 结束时间
         end_time = time.time_ns()
         # 执行时间
         run_time = (end_time - start_time) / 1000000
-        assert_info = test_result[1]
-        return result, assert_info, run_time
+        return result, run_time
 
     def update_result(self, id, err_nums):
         # 更新用例结果
