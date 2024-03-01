@@ -11,7 +11,6 @@ def req_func(req_data):
         params = {}
         body = {}
         assert_result = {}
-        print(req_data)
         if req_data['body'] is not None:
             for k, v in req_data['body'].items():
                 body[k] = v['value']
@@ -27,7 +26,7 @@ def req_func(req_data):
                     assert_result[k] = v['value']
         except:
             assert_result = {}
-
+        print(req_data)
         if method == 'POST':
             response = requests.post(url=url, json=body, headers=headers)
         elif method == 'GET':
