@@ -128,8 +128,8 @@ class APICaseStep(models.Model):
     body = models.JSONField(blank=True, null=True)
     assert_result = models.JSONField(verbose_name='断言', blank=True, null=True)
     # 是否禁用
-    # 前置
-    # 后置
+    before_code = models.TextField(verbose_name='前置处理',blank=True, null=True)
+    after_code = models.TextField(verbose_name='后置处理',blank=True, null=True)
     extract = models.JSONField(verbose_name='提取参数', blank=True, null=True)
     api_case = models.ForeignKey(to="APICase", to_field="id", on_delete=models.CASCADE, verbose_name='关联用例')
 
