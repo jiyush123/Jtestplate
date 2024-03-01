@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from testplate_server.models import APICase, APICaseStep, Report, ReportCaseInfo
+from testplate_server.utils.built_in_methods import ExtractVariables  # 处理前后置参数vars.get() vars.put()
 from testplate_server.utils.extract_params import extract_func
 from testplate_server.utils.request import req_func
 
@@ -243,6 +244,14 @@ class APICaseDebug(APIView):
             step = steps[i]
 
             url = host + step.get('uri')
+            # 这里获取前置处理代码并执行
+            before_code = step.get('before_code')
+            vars = ExtractVariables(extract_data)  # vars在前后置处理时使用vars.get() vars.put()
+            try:
+                exec(before_code)
+            except Exception:
+                pass
+            # 这里生成请求数据
             req_data = {'url': url, 'method': step.get('method'), 'headers': step.get('headers'),
                         'params': step.get('params'), 'body': step.get('body'),
                         'assert_result': step.get('assert_result')}
@@ -268,18 +277,25 @@ class APICaseDebug(APIView):
             resp.append(debug_result)
 
             # 获取提取参数，根据jsonpath获取响应值extract_val
-            extract = step.get('extract')
-            for k, v in extract.items():
-                extract_jsonpath = v['value'].split('.')
-                extract_val = debug_result
-                for i in extract_jsonpath:
-                    if i in extract_val:
-                        extract_val = extract_val[i]
-                    else:
-                        extract_val = None
-                        break
-                # 存到临时字典extract_data中
-                extract_data[k] = extract_val
+            if step.get('extract') is not None:
+                extract = step.get('extract')
+                for k, v in extract.items():
+                    extract_jsonpath = v['value'].split('.')
+                    extract_val = debug_result
+                    for i in extract_jsonpath:
+                        if i in extract_val:
+                            extract_val = extract_val[i]
+                        else:
+                            extract_val = None
+                            break
+                    # 存到临时字典extract_data中
+                    extract_data[k] = extract_val
+                # 这里获取后置处理代码并执行
+                after_code = step.get('after_code')
+                try:
+                    exec(after_code)
+                except Exception:
+                    pass
 
         res = {'status': True,
                'code': '200',
@@ -323,6 +339,14 @@ class APICaseTest(APIView):
             for j in range(self.len_step):
                 try:
                     step_data = dict(self.step_serializer.data[j])
+                    # 这里获取前置处理代码并执行
+                    before_code = step_data.get('before_code')
+                    vars = ExtractVariables(extract_data)  # vars在前后置处理时使用vars.get() vars.put()
+                    try:
+                        exec(before_code)
+                    except Exception:
+                        pass
+
                     step_data['uri'] = extract_func(step_data['uri'], extract_data)
                     if step_data['headers'] is not None:
                         for k, v in step_data['headers'].items():
@@ -372,6 +396,12 @@ class APICaseTest(APIView):
                     self.save_report_case_info(case_id=ids[i], step_name=step_data['name'], run_time=active_time,
                                                step_result=step_result, step_response=step_response,
                                                assert_info=assert_info, report_id=report_id)
+                    # 这里获取后置处理代码并执行
+                    after_code = step_data.get('after_code')
+                    try:
+                        exec(after_code)
+                    except Exception:
+                        pass
 
                 except Exception as e:
                     error_num = error_num + 1
