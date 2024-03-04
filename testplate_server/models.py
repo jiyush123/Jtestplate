@@ -128,8 +128,8 @@ class APICaseStep(models.Model):
     body = models.JSONField(blank=True, null=True)
     assert_result = models.JSONField(verbose_name='断言', blank=True, null=True)
     # 是否禁用
-    before_code = models.TextField(verbose_name='前置处理',blank=True, null=True)
-    after_code = models.TextField(verbose_name='后置处理',blank=True, null=True)
+    before_code = models.TextField(verbose_name='前置处理', blank=True, null=True)
+    after_code = models.TextField(verbose_name='后置处理', blank=True, null=True)
     extract = models.JSONField(verbose_name='提取参数', blank=True, null=True)
     api_case = models.ForeignKey(to="APICase", to_field="id", on_delete=models.CASCADE, verbose_name='关联用例')
 
@@ -184,3 +184,59 @@ class ReportCaseInfo(models.Model):
 
     class Meta:
         db_table = 'report_case_info'
+
+
+class CronJob(models.Model):
+    """任务表"""
+    # 定时任务名称
+    name = models.CharField(verbose_name='任务名称', max_length=200)
+
+    # 任务执行环境
+    env = models.ForeignKey(verbose_name='执行环境', to="Environment", to_field="id",
+                            on_delete=models.SET_NULL, blank=True, null=True)
+
+    # 任务类型
+    type_choices = (
+        (1, "定时执行"),
+        (2, "只执行一次")
+    )
+    type = models.SmallIntegerField(verbose_name='任务类型', choices=type_choices, default=1)
+
+    # 触发时间点 (存储为Cron表达式)
+    schedule = models.CharField(verbose_name='Cron', max_length=100)
+
+    # 上次执行时间
+    last_run_time = models.DateTimeField(verbose_name='上次执行时间', null=True, blank=True)
+
+    # 下次执行时间 只执行一次的任务，执行完没有下次执行时间
+    next_run_time = models.DateTimeField(verbose_name='下次执行时间', null=True, blank=True)
+
+    # 创建人
+    created_user = models.CharField(verbose_name='创建人', max_length=32)
+
+    # 创建时间
+    created_time = models.DateTimeField(verbose_name='创建时间', auto_now_add=True)
+
+    # 更新时间
+    updated_time = models.DateTimeField(verbose_name='更新时间', auto_now=True)
+
+    # 是否启用
+    is_active = models.BooleanField(verbose_name='启用', default=True)
+
+    def __str__(self):
+        return self.name
+
+    # 可以添加一个方法用于计算并更新next_run_time
+    def calculate_next_run(self):
+        # 这里根据schedule字段解析出cron表达式并计算出下一个执行时间
+        pass
+
+    def get_env_name(self):
+        if self.env:
+            return self.env.name
+        return None
+
+    class Meta:
+        db_table = 'cronjob'
+
+# 注意：Django本身并不直接支持定时任务的运行，需要配合像Celery这样的异步任务队列或系统定时任务如Linux的cron等实现定时任务的执行
