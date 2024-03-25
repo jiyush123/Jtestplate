@@ -21,7 +21,8 @@ from testplate_server.apicaseviews import APICaseAdd, APICaseList, APICaseDel, A
     APICaseTest, APICaseDebug
 from testplate_server.apiviews import APIList, APIDetail, APIAdd, APIDel, APIUpdate, APIDebug
 from testplate_server.authview import LoginView, LogoutView
-from testplate_server.cronjobviews import CronJobList, CronJobDetail, CronJobAdd, CronJobUpdate, CronJobDel
+from testplate_server.cronjobviews import CronJobList, CronJobDetail, CronJobAdd, CronJobUpdate, CronJobDel, \
+    CronJobIsActive
 from testplate_server.environmentviews import EnvironmentList, EnvironmentDetail, EnvironmentAdd, EnvironmentUpdate, \
     EnvironmentDel
 from testplate_server.homeviews import APICountView, APICaseCountView
@@ -69,6 +70,7 @@ urlpatterns = [
     path('cronjob/detail/', CronJobDetail.as_view()),
     path('cronjob/add/', CronJobAdd.as_view()),
     path('cronjob/update/', CronJobUpdate.as_view()),
+    path('cronjob/is_active/', CronJobIsActive.as_view()),
     path('cronjob/del/', CronJobDel.as_view()),
     # 报告
     path('report/list/', ReportList.as_view()),
