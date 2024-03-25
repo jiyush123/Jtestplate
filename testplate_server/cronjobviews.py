@@ -35,7 +35,7 @@ class CronJobAddSerializer(serializers.ModelSerializer):
     class Meta:
         model = CronJob
         # fields = "__all__"
-        fields = ["name", "type", "schedule", "is_active", "env", "created_user"]
+        fields = ["name", "type", "case_ids", "schedule", "is_active", "env", "created_user"]
 
 
 class CronJobUpdateSerializer(serializers.ModelSerializer):
@@ -43,7 +43,15 @@ class CronJobUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = CronJob
         # fields = "__all__"
-        fields = ["name", "type", "schedule", "is_active", "env"]
+        fields = ["name", "type", "case_ids", "schedule", "is_active", "env"]
+
+
+class CronJobChangeIsActive(serializers.ModelSerializer):
+    # 列表点击修改启用状态
+
+    class Meta:
+        model = CronJob
+        fields = ["is_active"]
 
 
 class CronJobList(APIView):
@@ -131,6 +139,32 @@ class CronJobUpdate(APIView):
             return Response(res)
         data = request.data
         serializer = CronJobUpdateSerializer(data=data)
+        if serializer.is_valid():
+            CronJob.objects.filter(pk=id).update(**serializer.validated_data)
+            res = {'status': True,
+                   'code': '200',
+                   'msg': "修改成功"}
+            return Response(res)
+        else:
+            res = {'status': False,
+                   'code': '500',
+                   'msg': serializer.errors}
+            return Response(res)
+
+
+class CronJobIsActive(APIView):
+    """修改任务启用状态接口"""
+
+    def post(self, request):
+        id = request.data['id']
+        exists = CronJob.objects.filter(id=id).exists()
+        if not exists:
+            res = {'status': False,
+                   'code': '500',
+                   'msg': "数据不存在"}
+            return Response(res)
+        data = request.data
+        serializer = CronJobChangeIsActive(data=data)
         if serializer.is_valid():
             CronJob.objects.filter(pk=id).update(**serializer.validated_data)
             res = {'status': True,
