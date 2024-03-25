@@ -202,6 +202,9 @@ class CronJob(models.Model):
     )
     type = models.SmallIntegerField(verbose_name='任务类型', choices=type_choices, default=1)
 
+    # 关联的用例id
+    case_ids = models.JSONField(verbose_name='关联用例id', blank=True, null=True)
+
     # 触发时间点 (存储为Cron表达式)
     schedule = models.CharField(verbose_name='Cron', max_length=100)
 
