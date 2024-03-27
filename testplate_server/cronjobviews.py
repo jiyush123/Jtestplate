@@ -4,6 +4,8 @@ from rest_framework.response import Response
 # Create your views here.
 from rest_framework.views import APIView
 
+from datetime import datetime
+
 from testplate_server.models import CronJob
 
 
@@ -12,6 +14,7 @@ class CronJobSerializer(serializers.ModelSerializer):
     type = serializers.CharField(source='get_type_display')
     env = serializers.CharField(source='get_env_name')
     updated_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
+    next_run_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
 
     class Meta:
         model = CronJob
@@ -24,6 +27,7 @@ class CronJobInfoSerializer(serializers.ModelSerializer):
     environment_id = serializers.IntegerField(source='env_id')
     env = serializers.CharField(source='get_env_name')
     updated_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
+    next_run_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
 
     class Meta:
         model = CronJob
@@ -114,10 +118,31 @@ class CronJobAdd(APIView):
 
         serializer = CronJobAddSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save()
+            # 计算下一次执行时间
+            # 创建cron迭代器时需要提供一个包含秒的完整时间点作为起始时间
+            cron_expression = request.data.get('schedule')
+            cron_data = cron_expression.split(' ')
+            # 周为?时，使用*代替?每一周都执行
+            cron = {"second": cron_data[0], "minute": cron_data[1], "hour": cron_data[2], "day": cron_data[3],
+                    "month": cron_data[4],
+                    "day_of_week": "*", "year": cron_data[6]}
+
+            trigger = CronTrigger(**cron)
+
+            # 获取下一次执行时间
+            next_run_time = trigger.get_next_fire_time(None, datetime.now())
+            # 解析字符串为aware datetime对象
+            aware_datetime = datetime.fromisoformat(str(next_run_time))
+
+            # 转换为UTC并移除时区信息
+            next_run_time = aware_datetime.replace(tzinfo=None).strftime('%Y-%m-%d %H:%M:%S')
+            # 获取下一次执行时间
+            serializer.validated_data['next_run_time'] = next_run_time
+            obj = serializer.save()
             res = {'status': True,
                    'code': '200',
                    'msg': "添加成功"}
+            add_job(obj.id)
             return Response(res)
         else:
             res = {'status': False,
@@ -140,10 +165,36 @@ class CronJobUpdate(APIView):
         data = request.data
         serializer = CronJobUpdateSerializer(data=data)
         if serializer.is_valid():
+            # 计算下一次执行时间
+            # 创建cron迭代器时需要提供一个包含秒的完整时间点作为起始时间
+            cron_expression = data.get('schedule')
+            cron_data = cron_expression.split(' ')
+            # 周为?时，使用*代替?每一周都执行
+            cron = {"second": cron_data[0], "minute": cron_data[1], "hour": cron_data[2], "day": cron_data[3],
+                    "month": cron_data[4],
+                    "day_of_week": "*", "year": cron_data[6]}
+
+            trigger = CronTrigger(**cron)
+
+            # 获取下一次执行时间
+            next_run_time = trigger.get_next_fire_time(None, datetime.now())
+            # 解析字符串为aware datetime对象
+            aware_datetime = datetime.fromisoformat(str(next_run_time))
+
+            # 转换为UTC并移除时区信息
+            next_run_time = aware_datetime.replace(tzinfo=None).strftime('%Y-%m-%d %H:%M:%S')
+            # 获取下一次执行时间
+            serializer.validated_data['next_run_time'] = next_run_time
+
             CronJob.objects.filter(pk=id).update(**serializer.validated_data)
             res = {'status': True,
                    'code': '200',
                    'msg': "修改成功"}
+            if serializer.data['is_active'] is False:
+                del_job(id)
+            else:
+                del_job(id)
+                add_job(id)
             return Response(res)
         else:
             res = {'status': False,
@@ -170,6 +221,10 @@ class CronJobIsActive(APIView):
             res = {'status': True,
                    'code': '200',
                    'msg': "修改成功"}
+            if serializer.validated_data['is_active'] is False:
+                del_job(id)
+            else:
+                add_job(id)
             return Response(res)
         else:
             res = {'status': False,
@@ -190,7 +245,72 @@ class CronJobDel(APIView):
                    'msg': "数据不存在"}
             return Response(res)
         CronJob.objects.filter(id=id).delete()
+        del_job(id)
         res = {'status': True,
                'code': '200',
                'msg': "删除成功"}
         return Response(res)
+
+
+""" 启动定时任务 """
+from apscheduler.triggers.cron import CronTrigger
+
+# # Create your views here.
+from apscheduler.schedulers.background import BackgroundScheduler  # 使用它可以使你的定时任务在后台运行
+from django_apscheduler.jobstores import DjangoJobStore
+
+job_defaults = {'max_instances': 5}  # 增加调度器
+scheduler = BackgroundScheduler(jobstores={'default': DjangoJobStore()})  # 创建定时任务的调度器对象——实例化调度器
+scheduler.configure(job_defaults=job_defaults)
+
+scheduler.start()  # 控制定时任务是否开启
+
+
+def run_test():
+    print('数据库任务')
+    # 保存上次执行时间，更新下次执行时间，执行用例
+
+
+# 从数据库读取任务并添加到scheduler
+for scheduled_task in CronJob.objects.filter(is_active=True).all():
+    cron_data = scheduled_task.schedule.split(' ')
+    cron = {"second": cron_data[0], "minute": cron_data[1], "hour": cron_data[2], "day": cron_data[3],
+            "month": cron_data[4],
+            "day_of_week": "*", "year": cron_data[6]}
+    trigger = CronTrigger(**cron)
+
+    scheduler.add_job(
+        func=run_test,
+        trigger=trigger,
+        id=str(scheduled_task.id),
+        name=scheduled_task.name,
+        replace_existing=True,  # 如果任务已经存在，则替换旧任务
+    )
+
+
+def add_job(id):
+    try:
+        queryset = CronJob.objects.filter(id=id).first()
+        serializer = CronJobInfoSerializer(instance=queryset)
+        active_cron_data = serializer.data['schedule'].split(' ')
+        active_cron = {"second": active_cron_data[0], "minute": active_cron_data[1],
+                       "hour": active_cron_data[2], "day": active_cron_data[3],
+                       "month": active_cron_data[4], "day_of_week": "*", "year": active_cron_data[6]}
+        active_trigger = CronTrigger(**active_cron)
+
+        scheduler.add_job(
+            func=run_test,
+            trigger=active_trigger,
+            id=str(serializer.data['id']),
+            name=serializer.data['name'],
+            replace_existing=True,  # 如果任务已经存在，则替换旧任务
+        )
+    except:
+        pass
+
+
+def del_job(id):
+    try:
+        scheduler.remove_job(str(id))
+    except:
+        pass
