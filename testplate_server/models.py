@@ -229,11 +229,6 @@ class CronJob(models.Model):
     def __str__(self):
         return self.name
 
-    # 可以添加一个方法用于计算并更新next_run_time
-    def calculate_next_run(self):
-        # 这里根据schedule字段解析出cron表达式并计算出下一个执行时间
-        pass
-
     def get_env_name(self):
         if self.env:
             return self.env.name
@@ -242,4 +237,4 @@ class CronJob(models.Model):
     class Meta:
         db_table = 'cronjob'
 
-# 注意：Django本身并不直接支持定时任务的运行，需要配合像Celery这样的异步任务队列或系统定时任务如Linux的cron等实现定时任务的执行
+# 注意：使用django-apscheduler实现定时任务的执行
