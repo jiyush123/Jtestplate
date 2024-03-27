@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'testplate_server',
+    'django_apscheduler',
     'corsheaders'
 ]
 
@@ -143,3 +144,5 @@ REST_FRAMEWORK = {
         'django_filters.rest_framework.DjangoFilterBackend',
     ),
 }
+
+SCHEDULER_AUTOSTART = True
