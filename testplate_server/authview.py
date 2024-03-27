@@ -8,7 +8,7 @@ from rest_framework.views import APIView
 from testplate_server.models import Token, User
 
 from testplate_server.utils.encrypt import md5
-from testplate_server.utils.token import generate_and_return_token
+from testplate_server.utils.generate_token import generate_and_return_token
 
 
 class LoginSerializers(serializers.Serializer):
