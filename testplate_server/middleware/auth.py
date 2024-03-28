@@ -20,23 +20,27 @@ class Auth(MiddlewareMixin):
         # 前后端分离项目使用token校验
         try:
             token = request.headers['Authorization']
-            token = Token.objects.filter(token=token).first()
-            if not token:
-                # 这个是django返回的路径，如果是用前后端分离的方式，需要返回一个code让前端重定向
-                result = {
-                    'status': False,
-                    'code': 401,
-                    'msg': "登录超时，请重新登录"
-                }
-                return JsonResponse(result,json_dumps_params={"ensure_ascii": False})
-            elif token.timeout_time < datetime.datetime.now():
-                Token.objects.filter(token=token.token).delete()
-                result = {
-                    'status': False,
-                    'code': 401,
-                    'msg': "登录超时，请重新登录"
-                }
-                return JsonResponse(result,json_dumps_params={"ensure_ascii": False})
+            # 如果token是super_admin_request，代表后端直接调用，不需要继续校验
+            if token == 'super_admin_request':
+                return
+            else:
+                token = Token.objects.filter(token=token).first()
+                if not token:
+                    # 这个是django返回的路径，如果是用前后端分离的方式，需要返回一个code让前端重定向
+                    result = {
+                        'status': False,
+                        'code': 401,
+                        'msg': "登录超时，请重新登录"
+                    }
+                    return JsonResponse(result,json_dumps_params={"ensure_ascii": False})
+                elif token.timeout_time < datetime.datetime.now():
+                    Token.objects.filter(token=token.token).delete()
+                    result = {
+                        'status': False,
+                        'code': 401,
+                        'msg': "登录超时，请重新登录"
+                    }
+                    return JsonResponse(result,json_dumps_params={"ensure_ascii": False})
         except:
             result = {
                 'status': False,
