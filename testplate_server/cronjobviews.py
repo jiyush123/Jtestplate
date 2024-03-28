@@ -1,3 +1,4 @@
+import requests
 from django.db.models import Count
 from rest_framework import serializers
 from rest_framework.response import Response
@@ -14,6 +15,7 @@ class CronJobSerializer(serializers.ModelSerializer):
     type = serializers.CharField(source='get_type_display')
     env = serializers.CharField(source='get_env_name')
     updated_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
+    last_run_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
     next_run_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
 
     class Meta:
@@ -27,6 +29,7 @@ class CronJobInfoSerializer(serializers.ModelSerializer):
     environment_id = serializers.IntegerField(source='env_id')
     env = serializers.CharField(source='get_env_name')
     updated_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
+    last_run_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
     next_run_time = serializers.DateTimeField(format="%Y-%m-%d %H:%M:%S")
 
     class Meta:
@@ -118,31 +121,16 @@ class CronJobAdd(APIView):
 
         serializer = CronJobAddSerializer(data=request.data)
         if serializer.is_valid():
-            # 计算下一次执行时间
-            # 创建cron迭代器时需要提供一个包含秒的完整时间点作为起始时间
-            cron_expression = request.data.get('schedule')
-            cron_data = cron_expression.split(' ')
-            # 周为?时，使用*代替?每一周都执行
-            cron = {"second": cron_data[0], "minute": cron_data[1], "hour": cron_data[2], "day": cron_data[3],
-                    "month": cron_data[4],
-                    "day_of_week": "*", "year": cron_data[6]}
-
-            trigger = CronTrigger(**cron)
-
             # 获取下一次执行时间
-            next_run_time = trigger.get_next_fire_time(None, datetime.now())
-            # 解析字符串为aware datetime对象
-            aware_datetime = datetime.fromisoformat(str(next_run_time))
-
-            # 转换为UTC并移除时区信息
-            next_run_time = aware_datetime.replace(tzinfo=None).strftime('%Y-%m-%d %H:%M:%S')
-            # 获取下一次执行时间
-            serializer.validated_data['next_run_time'] = next_run_time
+            serializer.validated_data['next_run_time'] = update_next_time(request.data.get('schedule'))
             obj = serializer.save()
             res = {'status': True,
                    'code': '200',
                    'msg': "添加成功"}
-            add_job(obj.id)
+            if request.data['is_active'] is False:
+                pass
+            else:
+                add_job(obj.id)
             return Response(res)
         else:
             res = {'status': False,
@@ -166,25 +154,7 @@ class CronJobUpdate(APIView):
         serializer = CronJobUpdateSerializer(data=data)
         if serializer.is_valid():
             # 计算下一次执行时间
-            # 创建cron迭代器时需要提供一个包含秒的完整时间点作为起始时间
-            cron_expression = data.get('schedule')
-            cron_data = cron_expression.split(' ')
-            # 周为?时，使用*代替?每一周都执行
-            cron = {"second": cron_data[0], "minute": cron_data[1], "hour": cron_data[2], "day": cron_data[3],
-                    "month": cron_data[4],
-                    "day_of_week": "*", "year": cron_data[6]}
-
-            trigger = CronTrigger(**cron)
-
-            # 获取下一次执行时间
-            next_run_time = trigger.get_next_fire_time(None, datetime.now())
-            # 解析字符串为aware datetime对象
-            aware_datetime = datetime.fromisoformat(str(next_run_time))
-
-            # 转换为UTC并移除时区信息
-            next_run_time = aware_datetime.replace(tzinfo=None).strftime('%Y-%m-%d %H:%M:%S')
-            # 获取下一次执行时间
-            serializer.validated_data['next_run_time'] = next_run_time
+            serializer.validated_data['next_run_time'] = update_next_time(request.data.get('schedule'))
 
             CronJob.objects.filter(pk=id).update(**serializer.validated_data)
             res = {'status': True,
@@ -217,15 +187,23 @@ class CronJobIsActive(APIView):
         data = request.data
         serializer = CronJobChangeIsActive(data=data)
         if serializer.is_valid():
-            CronJob.objects.filter(pk=id).update(**serializer.validated_data)
-            res = {'status': True,
-                   'code': '200',
-                   'msg': "修改成功"}
             if serializer.validated_data['is_active'] is False:
+                serializer.validated_data['next_run_time'] = None
+                CronJob.objects.filter(pk=id).update(**serializer.validated_data)
+                res = {'status': True,
+                       'code': '200',
+                       'msg': "禁用成功"}
                 del_job(id)
+                return Response(res)
             else:
+                schedule = CronJob.objects.filter(id=id).first().schedule
+                serializer.validated_data['next_run_time'] = update_next_time(schedule)
+                CronJob.objects.filter(pk=id).update(**serializer.validated_data)
                 add_job(id)
-            return Response(res)
+                res = {'status': True,
+                       'code': '200',
+                       'msg': "启用成功"}
+                return Response(res)
         else:
             res = {'status': False,
                    'code': '500',
@@ -266,9 +244,50 @@ scheduler.configure(job_defaults=job_defaults)
 scheduler.start()  # 控制定时任务是否开启
 
 
-def run_test():
-    print('数据库任务')
-    # 保存上次执行时间，更新下次执行时间，执行用例
+def update_next_time(schedule):
+    # 计算下一次执行时间
+    # 创建cron迭代器时需要提供一个包含秒的完整时间点作为起始时间
+    cron_data = schedule.split(' ')
+    # 周为?时，使用*代替?每一周都执行
+    cron = {"second": cron_data[0], "minute": cron_data[1], "hour": cron_data[2], "day": cron_data[3],
+            "month": cron_data[4],
+            "day_of_week": "*", "year": cron_data[6]}
+
+    trigger = CronTrigger(**cron)
+
+    # 获取下一次执行时间
+    next_run_time = trigger.get_next_fire_time(None, datetime.now())
+    # 解析字符串为aware datetime对象
+    aware_datetime = datetime.fromisoformat(str(next_run_time))
+
+    # 转换为UTC并移除时区信息
+    next_run_time = aware_datetime.replace(tzinfo=None).strftime('%Y-%m-%d %H:%M:%S')
+    return next_run_time
+
+
+def run_test(task_id, env_id, case_ids, schedule):
+    # 保存上次执行时间
+    last_run_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    CronJob.objects.filter(pk=task_id).update(last_run_time=last_run_time)
+    protocol = CronJob.objects.filter(pk=task_id).values_list('env__protocol', flat=True).first()
+    if protocol == 1:
+        protocol = 'http'
+    else:
+        protocol = 'https'
+    host = CronJob.objects.filter(pk=task_id).values_list('env__host', flat=True).first()
+    port = CronJob.objects.filter(pk=task_id).values_list('env__port', flat=True).first()
+    # 更新下次执行时间
+    next_run_time = update_next_time(schedule)
+    CronJob.objects.filter(pk=task_id).update(next_run_time=next_run_time)
+    # 执行用例
+    url = 'http://127.0.0.1:8000/apicase/run/'
+    host = protocol+'://'+host+':'+str(port)
+    headers = {'Authorization': 'super_admin_request'}
+    data = {'ids': case_ids, 'created_user': '超级管理员', 'host': host}
+    try:
+        requests.post(url=url, headers=headers, data=data)
+    except:
+        print('任务异常')
 
 
 # 从数据库读取任务并添加到scheduler
@@ -281,6 +300,7 @@ for scheduled_task in CronJob.objects.filter(is_active=True).all():
 
     scheduler.add_job(
         func=run_test,
+        args=(scheduled_task.id, scheduled_task.env_id, scheduled_task.case_ids, scheduled_task.schedule),
         trigger=trigger,
         id=str(scheduled_task.id),
         name=scheduled_task.name,
@@ -300,6 +320,7 @@ def add_job(id):
 
         scheduler.add_job(
             func=run_test,
+            args=(serializer.data['id'], serializer.data['case_ids'], serializer.data['schedule']),
             trigger=active_trigger,
             id=str(serializer.data['id']),
             name=serializer.data['name'],
