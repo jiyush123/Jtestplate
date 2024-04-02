@@ -9,6 +9,113 @@ from datetime import datetime
 
 from testplate_server.models import CronJob
 
+""" 启动定时任务 """
+from apscheduler.triggers.cron import CronTrigger
+
+# # Create your views here.
+from apscheduler.schedulers.background import BackgroundScheduler  # 使用它可以使你的定时任务在后台运行
+from django_apscheduler.jobstores import DjangoJobStore
+
+job_defaults = {'max_instances': 5}  # 增加调度器
+scheduler = BackgroundScheduler(jobstores={'default': DjangoJobStore()})  # 创建定时任务的调度器对象——实例化调度器
+scheduler.configure(job_defaults=job_defaults)
+
+scheduler.start()  # 控制定时任务是否开启
+
+
+def update_next_time(schedule):
+    # 计算下一次执行时间
+    # 创建cron迭代器时需要提供一个包含秒的完整时间点作为起始时间
+    cron_data = schedule.split(' ')
+    # 周为?时，使用*代替?每一周都执行
+    cron = {"second": cron_data[0], "minute": cron_data[1], "hour": cron_data[2], "day": cron_data[3],
+            "month": cron_data[4],
+            "day_of_week": "*", "year": cron_data[6]}
+
+    trigger = CronTrigger(**cron)
+
+    # 获取下一次执行时间
+    next_run_time = trigger.get_next_fire_time(None, datetime.now())
+    # 解析字符串为aware datetime对象
+    aware_datetime = datetime.fromisoformat(str(next_run_time))
+
+    # 转换为UTC并移除时区信息
+    next_run_time = aware_datetime.replace(tzinfo=None).strftime('%Y-%m-%d %H:%M:%S')
+    return next_run_time
+
+
+def run_test(task_id, case_ids, schedule):
+    # 保存上次执行时间
+    last_run_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    CronJob.objects.filter(pk=task_id).update(last_run_time=last_run_time)
+    protocol = CronJob.objects.filter(pk=task_id).values_list('env__protocol', flat=True).first()
+    if protocol == 1:
+        protocol = 'http'
+    else:
+        protocol = 'https'
+    host = CronJob.objects.filter(pk=task_id).values_list('env__host', flat=True).first()
+    port = CronJob.objects.filter(pk=task_id).values_list('env__port', flat=True).first()
+    # 更新下次执行时间
+    next_run_time = update_next_time(schedule)
+    CronJob.objects.filter(pk=task_id).update(next_run_time=next_run_time)
+    # 执行用例
+    url = 'http://127.0.0.1:8000/apicase/run/'
+    host = protocol + '://' + host + ':' + str(port)
+    headers = {'Authorization': 'super_admin_request'}
+    data = {'ids': case_ids, 'created_user': '超级管理员', 'host': host}
+    try:
+        requests.post(url=url, headers=headers, data=data)
+    except:
+        print('任务异常')
+
+
+# 从数据库读取任务并添加到scheduler
+for scheduled_task in CronJob.objects.filter(is_active=True).all():
+    print('加载任务', scheduled_task.name)
+    cron_data = scheduled_task.schedule.split(' ')
+    cron = {"second": cron_data[0], "minute": cron_data[1], "hour": cron_data[2], "day": cron_data[3],
+            "month": cron_data[4],
+            "day_of_week": "*", "year": cron_data[6]}
+    trigger = CronTrigger(**cron)
+
+    scheduler.add_job(
+        func=run_test,
+        args=(scheduled_task.id, scheduled_task.case_ids, scheduled_task.schedule),
+        trigger=trigger,
+        id=str(scheduled_task.id),
+        name=scheduled_task.name,
+        replace_existing=True,  # 如果任务已经存在，则替换旧任务
+    )
+
+
+def add_job(id):
+    try:
+        queryset = CronJob.objects.filter(id=id).first()
+        serializer = CronJobInfoSerializer(instance=queryset)
+        active_cron_data = serializer.data.get('schedule').split(' ')
+        active_cron = {"second": active_cron_data[0], "minute": active_cron_data[1],
+                       "hour": active_cron_data[2], "day": active_cron_data[3],
+                       "month": active_cron_data[4], "day_of_week": "*", "year": active_cron_data[6]}
+        active_trigger = CronTrigger(**active_cron)
+
+        scheduler.add_job(
+            func=run_test,
+            args=(serializer.data['id'], serializer.data['case_ids'], serializer.data['schedule']),
+            trigger=active_trigger,
+            id=str(serializer.data['id']),
+            name=serializer.data['name'],
+            replace_existing=True,  # 如果任务已经存在，则替换旧任务
+        )
+    except Exception as e:
+        print(str(e))
+
+
+def del_job(id):
+    try:
+        scheduler.remove_job(str(id))
+    except:
+        pass
+
 
 class CronJobSerializer(serializers.ModelSerializer):
     # 查询需要转换枚举值
@@ -228,110 +335,3 @@ class CronJobDel(APIView):
                'code': '200',
                'msg': "删除成功"}
         return Response(res)
-
-
-""" 启动定时任务 """
-from apscheduler.triggers.cron import CronTrigger
-
-# # Create your views here.
-from apscheduler.schedulers.background import BackgroundScheduler  # 使用它可以使你的定时任务在后台运行
-from django_apscheduler.jobstores import DjangoJobStore
-
-job_defaults = {'max_instances': 5}  # 增加调度器
-scheduler = BackgroundScheduler(jobstores={'default': DjangoJobStore()})  # 创建定时任务的调度器对象——实例化调度器
-scheduler.configure(job_defaults=job_defaults)
-
-scheduler.start()  # 控制定时任务是否开启
-
-
-def update_next_time(schedule):
-    # 计算下一次执行时间
-    # 创建cron迭代器时需要提供一个包含秒的完整时间点作为起始时间
-    cron_data = schedule.split(' ')
-    # 周为?时，使用*代替?每一周都执行
-    cron = {"second": cron_data[0], "minute": cron_data[1], "hour": cron_data[2], "day": cron_data[3],
-            "month": cron_data[4],
-            "day_of_week": "*", "year": cron_data[6]}
-
-    trigger = CronTrigger(**cron)
-
-    # 获取下一次执行时间
-    next_run_time = trigger.get_next_fire_time(None, datetime.now())
-    # 解析字符串为aware datetime对象
-    aware_datetime = datetime.fromisoformat(str(next_run_time))
-
-    # 转换为UTC并移除时区信息
-    next_run_time = aware_datetime.replace(tzinfo=None).strftime('%Y-%m-%d %H:%M:%S')
-    return next_run_time
-
-
-def run_test(task_id, env_id, case_ids, schedule):
-    # 保存上次执行时间
-    last_run_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    CronJob.objects.filter(pk=task_id).update(last_run_time=last_run_time)
-    protocol = CronJob.objects.filter(pk=task_id).values_list('env__protocol', flat=True).first()
-    if protocol == 1:
-        protocol = 'http'
-    else:
-        protocol = 'https'
-    host = CronJob.objects.filter(pk=task_id).values_list('env__host', flat=True).first()
-    port = CronJob.objects.filter(pk=task_id).values_list('env__port', flat=True).first()
-    # 更新下次执行时间
-    next_run_time = update_next_time(schedule)
-    CronJob.objects.filter(pk=task_id).update(next_run_time=next_run_time)
-    # 执行用例
-    url = 'http://127.0.0.1:8000/apicase/run/'
-    host = protocol+'://'+host+':'+str(port)
-    headers = {'Authorization': 'super_admin_request'}
-    data = {'ids': case_ids, 'created_user': '超级管理员', 'host': host}
-    try:
-        requests.post(url=url, headers=headers, data=data)
-    except:
-        print('任务异常')
-
-
-# 从数据库读取任务并添加到scheduler
-for scheduled_task in CronJob.objects.filter(is_active=True).all():
-    cron_data = scheduled_task.schedule.split(' ')
-    cron = {"second": cron_data[0], "minute": cron_data[1], "hour": cron_data[2], "day": cron_data[3],
-            "month": cron_data[4],
-            "day_of_week": "*", "year": cron_data[6]}
-    trigger = CronTrigger(**cron)
-
-    scheduler.add_job(
-        func=run_test,
-        args=(scheduled_task.id, scheduled_task.env_id, scheduled_task.case_ids, scheduled_task.schedule),
-        trigger=trigger,
-        id=str(scheduled_task.id),
-        name=scheduled_task.name,
-        replace_existing=True,  # 如果任务已经存在，则替换旧任务
-    )
-
-
-def add_job(id):
-    try:
-        queryset = CronJob.objects.filter(id=id).first()
-        serializer = CronJobInfoSerializer(instance=queryset)
-        active_cron_data = serializer.data['schedule'].split(' ')
-        active_cron = {"second": active_cron_data[0], "minute": active_cron_data[1],
-                       "hour": active_cron_data[2], "day": active_cron_data[3],
-                       "month": active_cron_data[4], "day_of_week": "*", "year": active_cron_data[6]}
-        active_trigger = CronTrigger(**active_cron)
-
-        scheduler.add_job(
-            func=run_test,
-            args=(serializer.data['id'], serializer.data['case_ids'], serializer.data['schedule']),
-            trigger=active_trigger,
-            id=str(serializer.data['id']),
-            name=serializer.data['name'],
-            replace_existing=True,  # 如果任务已经存在，则替换旧任务
-        )
-    except:
-        pass
-
-
-def del_job(id):
-    try:
-        scheduler.remove_job(str(id))
-    except:
-        pass
