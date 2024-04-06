@@ -2,6 +2,7 @@ import time
 from datetime import datetime
 
 from django.db.models import Count
+from django.http import QueryDict
 from rest_framework import serializers
 from rest_framework.response import Response
 # Create your views here.
@@ -307,7 +308,11 @@ class APICaseDebug(APIView):
 class APICaseTest(APIView):
     # 接收测试用例id
     def post(self, request):
-        ids = request.data['ids']
+        # 因为是drf封装了一层request，所以通过后端发送的字典会变成QueryDict，而QueryDict只能通过getlist方法保留完整的列表，所以要判断类型
+        if isinstance(request.data, QueryDict):
+            ids = request.data.getlist('ids')
+        else:
+            ids = request.data['ids']
         success_cases = 0
         error_cases = 0
         # 生成报告
