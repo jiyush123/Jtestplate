@@ -22,6 +22,8 @@ def extract_func(param, ext_params):
                 # 替换字符串
                 output_params = re.sub(r'\$\{(\w+)\}', lambda m: replace_placeholder(m, ext_params), param)
                 return output_params
+        else:
+            return param
     else:
         return param
 
