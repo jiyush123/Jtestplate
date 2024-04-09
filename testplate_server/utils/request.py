@@ -13,20 +13,83 @@ def req_func(req_data):
         assert_result = {}
         if req_data['body'] is not None:
             for k, v in req_data['body'].items():
-                body[k] = v['value']
+                if v['datatype'] == 'int':
+                    try:
+                        body[k] = int(v['value'])
+                    except:
+                        result = {
+                            'status': False,
+                            'status_code': 500,
+                            'msg': "数据类型错误"
+                        }
+                        return result
+                elif v['datatype'] == 'bool':
+                    if v['value'].lower() == 'false':
+                        body[k] = False
+                    else:
+                        body[k] = True
+                else:
+                    body[k] = v['value']
         if req_data['params'] is not None:
             for k, v in req_data['params'].items():
-                params[k] = v['value']
+                if v['datatype'] == 'int':
+                    try:
+                        params[k] = int(v['value'])
+                    except:
+                        result = {
+                            'status': False,
+                            'status_code': 500,
+                            'msg': "数据类型错误"
+                        }
+                        return result
+                elif v['datatype'] == 'bool':
+                    if v['value'].lower() == 'false':
+                        params[k] = False
+                    else:
+                        params[k] = True
+                else:
+                    params[k] = v['value']
         if req_data['headers'] is not None:
             for k, v in req_data['headers'].items():
-                headers[k] = v['value']
+                if v['datatype'] == 'int':
+                    try:
+                        headers[k] = int(v['value'])
+                    except:
+                        result = {
+                            'status': False,
+                            'status_code': 500,
+                            'msg': "数据类型错误"
+                        }
+                        return result
+                elif v['datatype'] == 'bool':
+                    if v['value'].lower() == 'false':
+                        headers[k] = False
+                    else:
+                        headers[k] = True
+                else:
+                    headers[k] = v['value']
         try:
             if req_data['assert_result'] is not None:
                 for k, v in req_data['assert_result'].items():
-                    assert_result[k] = v['value']
+                    if v['datatype'] == 'int':
+                        try:
+                            assert_result[k] = int(v['value'])
+                        except:
+                            result = {
+                                'status': False,
+                                'status_code': 500,
+                                'msg': "数据类型错误"
+                            }
+                            return result
+                    elif v['datatype'] == 'bool':
+                        if v['value'].lower() == 'false':
+                            assert_result[k] = False
+                        else:
+                            assert_result[k] = True
+                    else:
+                        assert_result[k] = v['value']
         except:
             assert_result = {}
-        print(req_data)
         if method == 'POST':
             response = requests.post(url=url, json=body, headers=headers)
         elif method == 'GET':
