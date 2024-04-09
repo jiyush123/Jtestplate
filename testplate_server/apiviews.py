@@ -9,6 +9,7 @@ import requests
 from rest_framework.views import APIView
 
 from testplate_server.models import APIInfo, ProModule
+from testplate_server.utils.load_swagger_api import generate_from_url
 from testplate_server.utils.request import req_func
 
 
@@ -180,3 +181,17 @@ class APIDebug(APIView):
         request.data['url'] = request.data['host'] + request.data['uri']
         result = req_func(request.data)
         return Response(result)
+
+
+class APIImport(APIView):
+    """导入接口"""
+
+    def post(self, request):
+        import_url = request.data.get('url')
+        api_list = generate_from_url(import_url)
+        print(api_list)
+        res = {'status': True,
+               'code': '200',
+               'data': api_list,
+               'msg': "导入成功"}
+        return Response(res)
