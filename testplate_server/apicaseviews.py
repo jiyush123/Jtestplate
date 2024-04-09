@@ -231,7 +231,6 @@ class APICaseUpdate(APIView):
 
 class APICaseDebug(APIView):
     def post(self, request):
-        # print(request.data)
         steps = request.data.get('steps')
         host = request.data.get('env')
         # 获取用例步骤
@@ -256,20 +255,9 @@ class APICaseDebug(APIView):
             req_data = {'url': url, 'method': step.get('method'), 'headers': step.get('headers'),
                         'params': step.get('params'), 'body': step.get('body'),
                         'assert_result': step.get('assert_result')}
-            # url是否含${}，循环查找请求头，请求参数，请求体，断言中v['value']是否含${}
-            req_data['url'] = extract_func(req_data['url'], extract_data)
-            if req_data['headers'] is not None:
-                for k, v in req_data['headers'].items():
-                    v['value'] = extract_func(v.get('value'), extract_data)
-            if req_data['params'] is not None:
-                for k, v in req_data['params'].items():
-                    v['value'] = extract_func(v.get('value'), extract_data)
-            if req_data['body'] is not None:
-                for k, v in req_data['body'].items():
-                    v['value'] = extract_func(v.get('value'), extract_data)
-            if req_data['assert_result'] is not None:
-                for k, v in req_data['assert_result'].items():
-                    v['value'] = extract_func(v.get('value'), extract_data)
+            # 根据提取参数重构请求参数
+            req_data = generate_req_data(req_data, extract_data)
+
             debug_result = req_func(req_data)
             end_time = time.time_ns()
             run_time = (end_time - start_time) / 1000000
@@ -351,20 +339,9 @@ class APICaseTest(APIView):
                         exec(before_code)
                     except Exception:
                         pass
-
-                    step_data['uri'] = extract_func(step_data['uri'], extract_data)
-                    if step_data['headers'] is not None:
-                        for k, v in step_data['headers'].items():
-                            v['value'] = extract_func(v.get('value'), extract_data)
-                    if step_data['params'] is not None:
-                        for k, v in step_data['params'].items():
-                            v['value'] = extract_func(v.get('value'), extract_data)
-                    if step_data['body'] is not None:
-                        for k, v in step_data['body'].items():
-                            v['value'] = extract_func(v.get('value'), extract_data)
-                    if step_data['assert_result'] is not None:
-                        for k, v in step_data['assert_result'].items():
-                            v['value'] = extract_func(v.get('value'), extract_data)
+                    step_data['url'] = self.host + step_data['uri']
+                    # 根据提取参数重构请求参数
+                    step_data = generate_req_data(step_data, extract_data)
                     # 执行用例，提取结果和时间和断言详情
                     result_info = self.test(step_data)
                     result = result_info[0]
@@ -442,7 +419,6 @@ class APICaseTest(APIView):
 
     def test(self, step_data):
         # 发请求
-        step_data['url'] = self.host + step_data['uri']
         # 开始时间
         start_time = time.time_ns()
         test_result = req_func(step_data)
@@ -480,3 +456,21 @@ class APICaseTest(APIView):
         case_info = ReportCaseInfo(case_id=case_id, step_name=step_name, run_time=run_time, step_result=step_result,
                                    step_response=step_response, assert_info=assert_info, report_id=report_id)
         case_info.save()
+
+
+def generate_req_data(req_data, extract_data):
+    # url是否含${}，循环查找请求头，请求参数，请求体，断言中v['value']是否含${}
+    req_data['url'] = extract_func(req_data['url'], extract_data)
+    if req_data['headers'] is not None:
+        for k, v in req_data['headers'].items():
+            v['value'] = extract_func(v.get('value'), extract_data)
+    if req_data['params'] is not None:
+        for k, v in req_data['params'].items():
+            v['value'] = extract_func(v.get('value'), extract_data)
+    if req_data['body'] is not None:
+        for k, v in req_data['body'].items():
+            v['value'] = extract_func(v.get('value'), extract_data)
+    if req_data['assert_result'] is not None:
+        for k, v in req_data['assert_result'].items():
+            v['value'] = extract_func(v.get('value'), extract_data)
+    return req_data
