@@ -1,15 +1,14 @@
 from datetime import datetime
 
+from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.db.models import Count
-from django.shortcuts import render
 from rest_framework import serializers
 from rest_framework.response import Response
-import requests
 # Create your views here.
 from rest_framework.views import APIView
 
 from testplate_server.models import APIInfo, ProModule
-from testplate_server.utils.load_swagger_api import generate_from_url
+from testplate_server.utils.load_swagger_api import generate_from_url, generate_from_jsonfile
 from testplate_server.utils.request import req_func
 
 
@@ -183,15 +182,71 @@ class APIDebug(APIView):
         return Response(result)
 
 
-class APIImport(APIView):
+class GetAPIImportList(APIView):
+    """从文件或者url获取所有接口列表"""
+
+    def post(self, request):
+        # 假设您已经有了一个名为request的HttpRequest对象
+        try:
+            uploaded_file = request.FILES.get('file', None)  # 从请求中获取文件
+            if uploaded_file is not None and isinstance(uploaded_file,
+                                                        InMemoryUploadedFile):  # 确保有文件且是InMemoryUploadedFile类型
+
+                file_content = uploaded_file.read().decode('utf-8')  # 读取文件内容
+
+                # 调用方法将json数据转换成字典，并获取到最后的api信息列表
+                api_list = generate_from_jsonfile(file_content)
+                res = {'status': True,
+                       'code': '200',
+                       'data': api_list,
+                       'msg': "导入成功"}
+                return Response(res)
+
+            else:
+                import_url = request.data.get('url')
+                api_list = generate_from_url(import_url)
+                res = {'status': True,
+                       'code': '200',
+                       'data': api_list,
+                       'msg': "导入成功"}
+                return Response(res)
+        except:
+            res = {'status': False,
+                   'code': '500',
+                   'msg': "导入失败"}
+            return Response(res)
+
+
+class ImportAPI(APIView):
     """导入接口"""
 
     def post(self, request):
-        import_url = request.data.get('url')
-        api_list = generate_from_url(import_url)
-        print(api_list)
+        apis_list = request.data.get('apis_list')
+        created_user = request.data.get('created_user')
+        updated_user = request.data.get('updated_user')
+        for i in range(len(apis_list)):
+            name = apis_list[i]['name']
+            description = apis_list[i]['description']
+            module = 1
+            method = apis_list[i]['method'].upper()
+            uri = apis_list[i]['uri']
+            headers = apis_list[i]['headers']
+            params = apis_list[i]['params']
+            body = apis_list[i]['body']
+            response = apis_list[i]['response']
+            import_data = {'name': name, 'description': description, 'module': module, 'method': method, 'uri': uri,
+                           'headers': headers, 'params': params, 'body': body, 'response': response,
+                           'created_user': created_user, 'updated_user': updated_user}
+            serializer = ApiAddSerializer(data=import_data)
+            if serializer.is_valid():
+                serializer.validated_data['updated_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                serializer.save()
+            else:
+                res = {'status': False,
+                       'code': '500',
+                       'msg': serializer.errors}
+                return Response(res)
         res = {'status': True,
                'code': '200',
-               'data': api_list,
                'msg': "导入成功"}
         return Response(res)
