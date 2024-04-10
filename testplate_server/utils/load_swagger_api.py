@@ -15,12 +15,15 @@ def generate_from_url(swagger_url):
         return api_info
 
 
-def generate_from_jsonfile(json_file_path):
+def generate_from_jsonfile(json_file):
     """通过json文件格式化"""
-    with open(json_file_path, 'r', encoding='utf-8') as file:
-        apis = json.load(file)
-    api_info = generate_api(apis)
-    return api_info
+    try:
+        apis = json.loads(json_file)
+        api_info = generate_api(apis)
+        return api_info
+    except:
+        api_info = []
+        return api_info
 
 
 def generate_api(api_info):
@@ -126,9 +129,6 @@ def generate_body(swagger_body):
 
 
 if __name__ == '__main__':
-    # url = 'http://10.81.29.157:8801/v2/api-docs'
-    # api_list = generate_from_url(url)
-    # print(api_list)
-    file_path = 'D://liantong//工业iot//iot-manager.json'
-    api_list2 = generate_from_jsonfile(file_path)
-    print(api_list2)
+    url = 'http://10.81.29.157:8801/v2/api-docs'
+    api_list = generate_from_url(url)
+    print(api_list)
