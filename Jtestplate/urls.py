@@ -19,7 +19,8 @@ from django.urls import path
 
 from testplate_server.apicaseviews import APICaseAdd, APICaseList, APICaseDel, APICaseDetail, APICaseUpdate, \
     APICaseTest, APICaseDebug
-from testplate_server.apiviews import APIList, APIDetail, APIAdd, APIDel, APIUpdate, APIDebug, APIImport
+from testplate_server.apiviews import APIList, APIDetail, APIAdd, APIDel, APIUpdate, APIDebug, GetAPIImportList, \
+    ImportAPI
 from testplate_server.authview import LoginView, LogoutView
 from testplate_server.cronjobviews import CronJobList, CronJobDetail, CronJobAdd, CronJobUpdate, CronJobDel, \
     CronJobIsActive
@@ -57,7 +58,8 @@ urlpatterns = [
     path('api/detail/', APIDetail.as_view()),
     path('api/update/', APIUpdate.as_view()),
     path('api/debug/', APIDebug.as_view()),
-    path('api/import/', APIImport.as_view()),
+    path('api/get_import_list/', GetAPIImportList.as_view()),
+    path('api/import/', ImportAPI.as_view()),
     # 接口测试用例
     path('apicase/list/', APICaseList.as_view()),
     path('apicase/add/', APICaseAdd.as_view()),
