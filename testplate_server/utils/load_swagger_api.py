@@ -124,7 +124,6 @@ def generate_body(swagger_body):
             for key, value in swagger_body[i].items():
 
                 if 'description' in value and 'type' in value:
-                    print(value['description'])
                     body[key] = {'value': '',
                                  'datatype': get_type(value['type']),
                                  'description': value['description']}
