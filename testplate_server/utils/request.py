@@ -12,82 +12,14 @@ def req_func(req_data):
         body = {}
         assert_result = {}
         if req_data['body'] is not None:
-            for k, v in req_data['body'].items():
-                if v['datatype'] == 'int':
-                    try:
-                        body[k] = int(v['value'])
-                    except:
-                        result = {
-                            'status': False,
-                            'status_code': 500,
-                            'msg': "数据类型错误"
-                        }
-                        return result
-                elif v['datatype'] == 'bool':
-                    if v['value'].lower() == 'false':
-                        body[k] = False
-                    else:
-                        body[k] = True
-                else:
-                    body[k] = v['value']
+            body = change_type(body, req_data['body'])
         if req_data['params'] is not None:
-            for k, v in req_data['params'].items():
-                if v['datatype'] == 'int':
-                    try:
-                        params[k] = int(v['value'])
-                    except:
-                        result = {
-                            'status': False,
-                            'status_code': 500,
-                            'msg': "数据类型错误"
-                        }
-                        return result
-                elif v['datatype'] == 'bool':
-                    if v['value'].lower() == 'false':
-                        params[k] = False
-                    else:
-                        params[k] = True
-                else:
-                    params[k] = v['value']
+            params = change_type(params, req_data['params'])
         if req_data['headers'] is not None:
-            for k, v in req_data['headers'].items():
-                if v['datatype'] == 'int':
-                    try:
-                        headers[k] = int(v['value'])
-                    except:
-                        result = {
-                            'status': False,
-                            'status_code': 500,
-                            'msg': "数据类型错误"
-                        }
-                        return result
-                elif v['datatype'] == 'bool':
-                    if v['value'].lower() == 'false':
-                        headers[k] = False
-                    else:
-                        headers[k] = True
-                else:
-                    headers[k] = v['value']
+            headers = change_type(headers, req_data['headers'])
         try:
             if req_data['assert_result'] is not None:
-                for k, v in req_data['assert_result'].items():
-                    if v['datatype'] == 'int':
-                        try:
-                            assert_result[k] = int(v['value'])
-                        except:
-                            result = {
-                                'status': False,
-                                'status_code': 500,
-                                'msg': "数据类型错误"
-                            }
-                            return result
-                    elif v['datatype'] == 'bool':
-                        if v['value'].lower() == 'false':
-                            assert_result[k] = False
-                        else:
-                            assert_result[k] = True
-                    else:
-                        assert_result[k] = v['value']
+                assert_result = change_type(assert_result, req_data['assert_result'])
         except:
             assert_result = {}
         if method == 'POST':
@@ -139,3 +71,25 @@ def req_func(req_data):
             'msg': "执行失败"
         }
         return result
+
+
+def change_type(body_in, req_data):
+    for k, v in req_data.items():
+        if v['datatype'] == 'int':
+            try:
+                body_in[k] = int(v['value'])
+            except:
+                result = {
+                    'status': False,
+                    'status_code': 500,
+                    'msg': "数据类型错误"
+                }
+                return result
+        elif v['datatype'] == 'bool':
+            if v['value'].lower() == 'false':
+                body_in[k] = False
+            else:
+                body_in[k] = True
+        else:
+            body_in[k] = v['value']
+    return body_in
