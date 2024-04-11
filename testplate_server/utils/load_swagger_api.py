@@ -75,12 +75,15 @@ def generate_api(api_info):
 def generate_headers(security_headers, consumes_headers, parameters_headers):
     headers = {}
     for key, value in security_headers.items():
-        headers[key] = {'value': value['name']}
+        headers[key] = {'value': '',
+                        'datatype': 'string'}
     for i in range(len(consumes_headers)):
-        headers['Content-Type'] = {'value': consumes_headers[i]}
+        headers['Content-Type'] = {'value': consumes_headers[i],
+                                   'datatype': 'string'}
     for i in range(len(parameters_headers)):
         if 'description' in parameters_headers[i]['schema']:
             headers[parameters_headers[i]['name']] = {'value': '',
+                                                      'datatype': get_type(parameters_headers[i]['schema']['type']),
                                                       'description': parameters_headers[i]['schema']['description']}
         else:
             headers[parameters_headers[i]['name']] = {'value': '',
@@ -95,14 +98,20 @@ def generate_params(swagger_params):
     else:
         for i in range(len(swagger_params)):
             if 'description' in swagger_params[i] and 'type' in swagger_params[i]:
-                params[swagger_params[i]['name']] = {'value': swagger_params[i]['type'],
+                params[swagger_params[i]['name']] = {'value': '',
+                                                     'datatype': get_type(swagger_params[i]['type']),
                                                      'description': swagger_params[i]['description']}
             elif 'type' in swagger_params[i]:
-                params[swagger_params[i]['name']] = {'value': swagger_params[i]['type']}
+                params[swagger_params[i]['name']] = {'value': '',
+                                                     'datatype': get_type(swagger_params[i]['type'])}
             elif 'description' in swagger_params[i]:
-                params[swagger_params[i]['name']] = {'value': '', 'description': swagger_params[i]['description']}
+                params[swagger_params[i]['name']] = {'value': '',
+                                                     'datatype': 'string',
+                                                     'description': swagger_params[i]['description']}
             else:
-                params[swagger_params[i]['name']] = {'value': '', 'description': ''}
+                params[swagger_params[i]['name']] = {'value': '',
+                                                     'datatype': 'string',
+                                                     'description': ''}
     return params
 
 
@@ -115,17 +124,32 @@ def generate_body(swagger_body):
             for key, value in swagger_body[i].items():
 
                 if 'description' in value and 'type' in value:
-                    body[key] = {'value': value['type'],
+                    print(value['description'])
+                    body[key] = {'value': '',
+                                 'datatype': get_type(value['type']),
                                  'description': value['description']}
                 elif 'type' in value:
-                    body[key] = {'value': value['type']}
+                    body[key] = {'value': '',
+                                 'datatype': get_type(value['type'])}
                 elif 'description' in value:
                     body[key] = {'value': '',
+                                 'datatype': 'string',
                                  'description': value['description']}
                 else:
                     body[key] = {'value': '',
+                                 'datatype': 'string',
                                  'description': ''}
     return body
+
+
+def get_type(datatype):
+    if datatype == 'integer':
+        datatype = 'int'
+    elif datatype == 'boolean':
+        datatype = 'bool'
+    else:
+        pass
+    return datatype
 
 
 if __name__ == '__main__':
