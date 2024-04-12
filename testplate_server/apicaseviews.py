@@ -305,17 +305,17 @@ class APICaseTest(APIView):
             APICase.objects.filter(pk=ids[i]).update(last_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
             step_queryset = APICaseStep.objects.filter(api_case=case_serializer.data['id']).order_by('sort')
-            self.step_serializer = APICaseStepInfoSerializer(instance=step_queryset, many=True)
-            self.len_step = len(self.step_serializer.data)
-            self.host = request.data['host']
+            step_serializer = APICaseStepInfoSerializer(instance=step_queryset, many=True)
+            len_step = len(step_serializer.data)
+            host = request.data['host']
             error_num = 0
             response = []  # 还没存库
             # 执行用例
             start_time = time.time_ns()  # 这是纳秒
             extract_data = {}  # 提取参数临时变量
-            for j in range(self.len_step):
+            for j in range(len_step):
                 try:
-                    step_data = dict(self.step_serializer.data[j])
+                    step_data = dict(step_serializer.data[j])
                     # 这里获取前置处理代码并执行
                     before_code = step_data.get('before_code')
                     vars = ExtractVariables(extract_data)  # vars在前后置处理时使用vars.get() vars.put()
@@ -323,7 +323,7 @@ class APICaseTest(APIView):
                         exec(before_code)
                     except Exception:
                         pass
-                    step_data['url'] = self.host + step_data['uri']
+                    step_data['url'] = host + step_data['uri']
                     # 根据提取参数重构请求参数
                     step_data = generate_req_data(step_data, extract_data)
                     # 执行用例，提取结果和时间和断言详情
