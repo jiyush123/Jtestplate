@@ -237,10 +237,8 @@ class APICaseDebug(APIView):
         len_steps = len(steps)
         # 遍历步骤，要记录每一次的返回和耗时
         resp = []
-        steps_time = []
         extract_data = {}
         for i in range(len_steps):
-            start_time = time.time_ns()
             step = steps[i]
 
             url = host + step.get('uri')
@@ -259,36 +257,22 @@ class APICaseDebug(APIView):
             req_data = generate_req_data(req_data, extract_data)
 
             debug_result = req_func(req_data)
-            end_time = time.time_ns()
-            run_time = (end_time - start_time) / 1000000
-            steps_time.append(run_time)
 
             resp.append(debug_result)
 
-            # 获取提取参数，根据jsonpath获取响应值extract_val
-            if step.get('extract') is not None:
-                extract = step.get('extract')
-                for k, v in extract.items():
-                    extract_jsonpath = v['value'].split('.')
-                    extract_val = debug_result
-                    for i in extract_jsonpath:
-                        if i in extract_val:
-                            extract_val = extract_val[i]
-                        else:
-                            extract_val = None
-                            break
-                    # 存到临时字典extract_data中
-                    extract_data[k] = extract_val
-                # 这里获取后置处理代码并执行
-                after_code = step.get('after_code')
-                try:
-                    exec(after_code)
-                except Exception:
-                    pass
+            # 获取提取参数
+            save_extract(extract_data, step.get('extract'), debug_result)
+
+            # 这里获取后置处理代码并执行
+            after_code = step.get('after_code')
+            try:
+                exec(after_code)
+            except Exception:
+                pass
 
         res = {'status': True,
                'code': '200',
-               'data': {'res': resp, 'time': steps_time},
+               'data': {'res': resp},
                'msg': "调试完成"}
         return Response(res)
 
@@ -343,27 +327,14 @@ class APICaseTest(APIView):
                     # 根据提取参数重构请求参数
                     step_data = generate_req_data(step_data, extract_data)
                     # 执行用例，提取结果和时间和断言详情
-                    result_info = self.test(step_data)
-                    result = result_info[0]
+                    result = req_func(step_data)
                     assert_info = result.get('assert_info')
-                    active_time = result_info[1]
-                    # 获取提取参数，根据jsonpath获取响应值extract_val
-                    extract = step_data.get('extract')
-                    if step_data['extract'] is not None:
-                        for k, v in extract.items():
-                            extract_jsonpath = v['value'].split('.')
-                            extract_val = result
-                            for obj in extract_jsonpath:
-                                if obj in extract_val:
-                                    extract_val = extract_val[obj]
-                                else:
-                                    extract_val = None
-                                    break
-                            # 存到临时字典extract_data中
-                            extract_data[k] = extract_val
+                    active_time = result.get('run_time')
+                    # 获取提取参数
+                    save_extract(extract_data, step_data.get('extract'), result)
+
                     # 根据断言结果判断步骤是否成功
                     step_result = 3
-                    # assert_info {'key': {'expect': '', 'value': '', 'result': 'success'}}
                     for k, v in assert_info.items():
                         if v.get('result') == 'error':
                             error_num += 1
@@ -417,18 +388,6 @@ class APICaseTest(APIView):
         }
         return Response(result)
 
-    def test(self, step_data):
-        # 发请求
-        # 开始时间
-        start_time = time.time_ns()
-        test_result = req_func(step_data)
-        result = test_result
-        # 结束时间
-        end_time = time.time_ns()
-        # 执行时间
-        run_time = (end_time - start_time) / 1000000
-        return result, run_time
-
     def update_result(self, id, err_nums):
         # 更新用例结果
         if err_nums > 0:
@@ -474,3 +433,19 @@ def generate_req_data(req_data, extract_data):
         for k, v in req_data['assert_result'].items():
             v['value'] = extract_func(v.get('value'), extract_data)
     return req_data
+
+
+def save_extract(extract_data, requset_extract, result):
+    # 根据jsonpath获取响应值extract_val
+    if requset_extract:
+        for k, v in requset_extract.items():
+            extract_jsonpath = v['value'].split('.')
+            extract_val = result
+            for obj in extract_jsonpath:
+                if obj in extract_val:
+                    extract_val = extract_val[obj]
+                else:
+                    extract_val = None
+                    break
+            # 存到临时字典extract_data中
+            extract_data[k] = extract_val
