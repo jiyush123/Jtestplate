@@ -34,11 +34,14 @@ def req_func(req_data):
             }
             return result
         status_code = response.status_code
+        response_time = round(response.elapsed.total_seconds() * 1000, 2)  # 毫秒
         response = json.loads(response.content.decode())
+
         result = {
             'status': True,
             'status_code': status_code,
             'response': response,
+            'run_time': response_time,
             'msg': "执行成功",
         }
         if assert_result == {}:
