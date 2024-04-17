@@ -148,7 +148,6 @@ class CronJobAddSerializer(serializers.ModelSerializer):
     # 新增修改不需要转换枚举值
     class Meta:
         model = CronJob
-        # fields = "__all__"
         fields = ["name", "type", "case_ids", "schedule", "is_active", "env", "created_user"]
 
 
@@ -225,7 +224,7 @@ class CronJobAdd(APIView):
     """新增任务接口"""
 
     def post(self, request):
-
+        request.data['created_user'] = request.operator
         serializer = CronJobAddSerializer(data=request.data)
         if serializer.is_valid():
             # 获取下一次执行时间

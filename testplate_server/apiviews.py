@@ -112,7 +112,8 @@ class APIAdd(APIView):
     """新增接口"""
 
     def post(self, request):
-        print(request.data)
+        request.data['created_user'] = request.operator
+        request.data['updated_user'] = request.operator
         serializer = ApiAddSerializer(data=request.data)
         if serializer.is_valid():
             serializer.validated_data['updated_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -151,6 +152,7 @@ class APIUpdate(APIView):
 
     def post(self, request):
         id = request.data['id']
+        request.data['updated_user'] = request.operator
         exists = APIInfo.objects.filter(id=id).exists()
         if not exists:
             res = {'status': False,

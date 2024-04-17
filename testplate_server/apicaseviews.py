@@ -68,7 +68,8 @@ class APICaseAdd(APIView):
 
     def post(self, request):
         steps = request.data.get('steps')
-
+        request.data['created_user'] = request.operator
+        request.data['updated_user'] = request.operator
         case_serializer = APICaseAddSerializer(data=request.data)
 
         if case_serializer.is_valid():
@@ -182,6 +183,7 @@ class APICaseUpdate(APIView):
 
     def post(self, request):
         id = request.data['id']
+        request.data['updated_user'] = request.operator
         exists = APICase.objects.filter(id=id).exists()
         if not exists:
             res = {'status': False,
