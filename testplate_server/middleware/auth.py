@@ -22,6 +22,7 @@ class Auth(MiddlewareMixin):
             token = request.headers['Authorization']
             # 如果token是super_admin_request，代表后端直接调用，不需要继续校验
             if token == 'super_admin_request':
+                request.data['operator'] = '超级管理员'
                 return
             else:
                 token = Token.objects.filter(token=token).first()
@@ -32,7 +33,7 @@ class Auth(MiddlewareMixin):
                         'code': 401,
                         'msg': "登录超时，请重新登录"
                     }
-                    return JsonResponse(result,json_dumps_params={"ensure_ascii": False})
+                    return JsonResponse(result, json_dumps_params={"ensure_ascii": False})
                 elif token.timeout_time < datetime.datetime.now():
                     Token.objects.filter(token=token.token).delete()
                     result = {
@@ -40,14 +41,18 @@ class Auth(MiddlewareMixin):
                         'code': 401,
                         'msg': "登录超时，请重新登录"
                     }
-                    return JsonResponse(result,json_dumps_params={"ensure_ascii": False})
+                    return JsonResponse(result, json_dumps_params={"ensure_ascii": False})
+                else:
+                    """获取请求人信息，添加到请求中"""
+                    request.operator = token.user.name
+
         except:
             result = {
                 'status': False,
                 'code': 401,
                 'msg': "登录超时，请重新登录"
             }
-            return JsonResponse(result,json_dumps_params={"ensure_ascii": False})
+            return JsonResponse(result, json_dumps_params={"ensure_ascii": False})
 
     # def process_response(self, request, response):
     #     return response
