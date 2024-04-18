@@ -22,8 +22,7 @@ class Auth(MiddlewareMixin):
             token = request.headers['Authorization']
             # 如果token是super_admin_request，代表后端直接调用，不需要继续校验
             if token == 'super_admin_request':
-                request.data['operator'] = '超级管理员'
-                return
+                request.operator = '超级管理员'
             else:
                 token = Token.objects.filter(token=token).first()
                 if not token:
