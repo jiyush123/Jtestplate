@@ -282,7 +282,7 @@ class APICaseDebug(APIView):
 class APICaseTest(APIView):
     # 接收测试用例id
     def post(self, request):
-        # 因为是drf封装了一层request，所以通过后端发送的字典会变成QueryDict，而QueryDict只能通过getlist方法保留完整的列表，所以要判断类型
+        # 因为是drf封装了一层request，所以通过后端直接发送的字典会变成QueryDict（定时任务触发），而QueryDict只能通过getlist方法保留完整的列表，所以要判断类型
         if isinstance(request.data, QueryDict):
             ids = request.data.getlist('ids')
         else:
@@ -291,10 +291,13 @@ class APICaseTest(APIView):
         error_cases = 0
         # 生成报告
         start_run_time = time.time_ns()  # 报告开始时间
-        created_user = request.data['created_user']
+        created_user = request.operator
+        # 获取报告id
         report_id = self.save_report(created_user)
         case_info = []
+        # 开始组织用例
         for i in range(len(ids)):
+            # 判断用例是否存在
             exists = APICase.objects.filter(id=ids[i]).exists()
             if not exists:
                 res = {'status': False,
@@ -302,16 +305,18 @@ class APICaseTest(APIView):
                        'msg': "数据不存在"}
                 return Response(res)
             # 找到对应的数据
+            # 获取用例信息
             case_queryset = APICase.objects.filter(id=ids[i]).first()
             case_serializer = APICaseInfoSerializer(instance=case_queryset)
+            # 更新用例上一次操作时间
             APICase.objects.filter(pk=ids[i]).update(last_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-
+            # 获取步骤信息
             step_queryset = APICaseStep.objects.filter(api_case=case_serializer.data['id']).order_by('sort')
             step_serializer = APICaseStepInfoSerializer(instance=step_queryset, many=True)
             len_step = len(step_serializer.data)
             host = request.data['host']
-            error_num = 0
-            response = []  # 还没存库
+            error_num = 0  # 设置失败次数为0
+            response = []  # 还没存库，设置返回为空列表
             # 执行用例
             start_time = time.time_ns()  # 这是纳秒
             extract_data = {}  # 提取参数临时变量
@@ -336,7 +341,7 @@ class APICaseTest(APIView):
                     save_extract(extract_data, step_data.get('extract'), result)
 
                     # 根据断言结果判断步骤是否成功
-                    step_result = 3
+                    step_result = 3  # 3为无结果
                     for k, v in assert_info.items():
                         if v.get('result') == 'error':
                             error_num += 1
@@ -344,10 +349,11 @@ class APICaseTest(APIView):
                             break
                     if step_result != 2:
                         step_result = 1
-                    response.append(result['response'])
+                    response.append(result.get('response'))
                     # 保存到用例详情表
-                    step_response = {k: v for k, v in result.items() if k != 'assert_info'}
-
+                    # 排除键为assert_info，则排除断言信息
+                    step_response = {k: v for k, v in result.items() if (k != 'assert_info' or k != 'run_time')}
+                    # 生成步骤详情
                     self.save_report_case_info(case_id=ids[i], step_name=step_data['name'], run_time=active_time,
                                                step_result=step_result, step_response=step_response,
                                                assert_info=assert_info, report_id=report_id)
@@ -374,15 +380,18 @@ class APICaseTest(APIView):
                 success_cases = success_cases + 1
             else:
                 error_cases = error_cases + 1
-            Report.objects.filter(pk=report_id).update(cases=case_info, success_nums=success_cases,
-                                                       error_nums=error_cases,
-                                                       end_time=datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        # 报告结束时间
+        report_end_time = datetime.fromtimestamp(time.time_ns() / 1000000000).strftime('%Y-%m-%d %H:%M:%S')
         total_time = (time.time_ns() - start_run_time) / 1000000  # 报告运行时间ms单位
         if error_cases > 0:
             case_result = 2
         else:
             case_result = 1
-        Report.objects.filter(pk=report_id).update(result=case_result, status=2, total_time=total_time)
+        # 更新最后的报告
+        Report.objects.filter(pk=report_id).update(cases=case_info, success_nums=success_cases,
+                                                   error_nums=error_cases,
+                                                   end_time=report_end_time, result=case_result, status=2,
+                                                   total_time=total_time)
         result = {
             'status': True,
             'code': '200',
