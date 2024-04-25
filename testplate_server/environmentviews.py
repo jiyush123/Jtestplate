@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db.models import Count
 from django.shortcuts import render
 from rest_framework import serializers
@@ -6,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from testplate_server.models import Environment
+from testplate_server.utils.paginator_fun import paginator_fun
 
 
 class EnvironmentSerializer(serializers.ModelSerializer):
@@ -28,32 +30,36 @@ class EnvironmentList(APIView):
     """获取环境列表接口"""
 
     def get(self, request):
-        sq = request.GET
-        excluded_keys = ['size', 'page']
-        filtered_params = {k: v for k, v in sq.items() if k not in excluded_keys}
-        # 获取列表的查询字段后，根据需要进行模糊查询
-        if 'name' in filtered_params:
-            filtered_params['name__contains'] = filtered_params['name']
-            filtered_params.pop('name')
-        enviroments = Environment.objects.filter(**filtered_params)
-        size = int(request.GET.get('size'))
-        page = int(request.GET.get('page'))
-        # 使用annotate()和values()方法进行分页查询
-        queryset = enviroments.annotate(count=Count('id')).order_by('-id')
-        # slice方法进行分页
-        start = (page - 1) * size
-        end = start + size
-        queryset = queryset[start:end]
-        serializer = EnvironmentSerializer(instance=queryset, many=True)
-        result = {
-            'status': True,
-            'code': 200,
-            'data': serializer.data,
-            'total': enviroments.count(),
-            'page': page,
-            'size': size
-        }
-        return Response(result)
+        try:
+            sq = request.GET
+            excluded_keys = ['size', 'page']
+            filtered_params = {k: v for k, v in sq.items() if k not in excluded_keys}
+            # 获取列表的查询字段后，根据需要进行模糊查询
+            if 'name' in filtered_params:
+                filtered_params['name__contains'] = filtered_params['name']
+                filtered_params.pop('name')
+            size = int(request.GET.get('size', 10))  # 设置默认值以避免ValueError
+            page = int(request.GET.get('page', 1))
+            # 使用django的分页方法
+            queryset = paginator_fun(table_obj=Environment,
+                                     filtered=filtered_params,
+                                     order_by='-id', page=page, size=size)
+            serializer = EnvironmentSerializer(instance=queryset[0], many=True)
+            result = {
+                'status': True,
+                'code': 200,
+                'data': serializer.data,
+                'total': queryset[1],
+                'page': page,
+                'size': size
+            }
+            return Response(result)
+        except (ValueError, ValidationError) as e:
+            # 处理整数转换失败或验证错误的情况
+            return Response({'status': False, 'code': 400, 'message': str(e)}, status=400)
+        except Exception as e:
+            # 捕获其他潜在异常
+            return Response({'status': False, 'code': 500, 'message': 'Internal Server Error'}, status=500)
 
 
 class EnvironmentDetail(APIView):
