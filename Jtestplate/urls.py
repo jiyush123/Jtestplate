@@ -27,7 +27,7 @@ from testplate_server.cronjobviews import CronJobList, CronJobDetail, CronJobAdd
 from testplate_server.environmentviews import EnvironmentList, EnvironmentDetail, EnvironmentAdd, EnvironmentUpdate, \
     EnvironmentDel
 from testplate_server.homeviews import APICountView, APICaseCountView
-from testplate_server.promoduleviews import ModuleList
+from testplate_server.promoduleviews import ModuleList, ModuleAdd, ModuleUpdate, ModuleDel
 from testplate_server.reportviews import ReportList, ReportDel, ReportDetail, ReportCaseDetail
 from testplate_server.userviews import UserAdd, UserDetail, UserList, UserUpdate, UserDel
 from testplate_server.views import TestView
@@ -51,6 +51,9 @@ urlpatterns = [
     path('environment/del/', EnvironmentDel.as_view()),
     # 模块接口
     path('module/list/', ModuleList.as_view()),
+    path('module/add/', ModuleAdd.as_view()),
+    path('module/update/', ModuleUpdate.as_view()),
+    path('module/del/', ModuleDel.as_view()),
     # api接口
     path('api/list/', APIList.as_view()),
     path('api/add/', APIAdd.as_view()),
