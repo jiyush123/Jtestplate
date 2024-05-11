@@ -28,9 +28,8 @@ class Token(models.Model):
 class ProModule(models.Model):
     """项目模块表"""
     name = models.CharField(verbose_name='模块名称', max_length=50)
-
-    # 是否子模块
     # 父模块id
+    parent_id = models.IntegerField(verbose_name='父节点id', blank=True, null=True)
 
     def __str__(self):
         return self.name
