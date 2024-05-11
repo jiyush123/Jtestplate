@@ -65,7 +65,6 @@ class APIList(APIView):
                 module_ids = ProModule.objects.filter(name__contains=filtered_params['module']).values_list('id', flat=True)
                 filtered_params['module_id__in'] = module_ids
                 filtered_params.pop('module')
-
             size = int(request.GET.get('size', 10))  # 设置默认值以避免ValueError
             page = int(request.GET.get('page', 1))
             # 使用django的分页方法
@@ -230,12 +229,13 @@ class ImportAPI(APIView):
 
     def post(self, request):
         apis_list = request.data.get('apis_list')
+        module_id = request.data.get('module_id')
         created_user = request.operator
         updated_user = request.operator
         for i in range(len(apis_list)):
             name = apis_list[i]['name']
             description = apis_list[i]['description']
-            module = 1
+            module = module_id
             method = apis_list[i]['method'].upper()
             uri = apis_list[i]['uri']
             headers = apis_list[i]['headers']
