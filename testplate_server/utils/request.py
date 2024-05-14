@@ -77,22 +77,25 @@ def req_func(req_data):
 
 
 def change_type(body_in, req_data):
-    for k, v in req_data.items():
-        if v['datatype'] == 'int':
-            try:
-                body_in[k] = int(v['value'])
-            except:
-                result = {
-                    'status': False,
-                    'status_code': 500,
-                    'msg': "数据类型错误"
-                }
-                return result
-        elif v['datatype'] == 'bool':
-            if v['value'].lower() == 'false':
-                body_in[k] = False
-            else:
-                body_in[k] = True
+    """不推荐一边迭代一边更新字典，需要先获取需要更新的键，然后再统一更新"""
+    int_list = [k for k, v in req_data.items() if v['datatype'] == 'int']  # 生成需要转换int类型的键列表
+    bool_list = [k for k, v in req_data.items() if v['datatype'] == 'bool']  # 生成需要转换bool类型的键列表
+    str_list = [k for k, v in req_data.items() if v['datatype'] == 'string']  # 不需要转换的键列表
+    for key in int_list:
+        try:
+            body_in[key] = int(req_data[key]['value'])
+        except:
+            result = {
+                'status': False,
+                'status_code': 500,
+                'msg': "数据类型错误"
+            }
+            return result
+    for key in bool_list:
+        if req_data[key]['value'].lower() == 'false':
+            body_in[key] = False
         else:
-            body_in[k] = v['value']
+            body_in[key] = True
+    for key in str_list:
+        body_in[key] = req_data[key]['value']
     return body_in
