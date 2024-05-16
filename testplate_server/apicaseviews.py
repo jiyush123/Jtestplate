@@ -255,10 +255,7 @@ class APICaseDebug(APIView):
             # 这里获取前置处理代码并执行
             before_code = step.get('before_code')
             vars = ExtractVariables(extract_data)  # vars在前后置处理时使用vars.get() vars.put()
-            try:
-                exec(before_code)
-            except Exception:
-                pass
+            execute_before_after_code(before_code)
             # 这里生成请求数据
             req_data = {'url': url, 'method': step.get('method'), 'headers': step.get('headers'),
                         'params': step.get('params'), 'body': step.get('body'),
@@ -275,10 +272,7 @@ class APICaseDebug(APIView):
 
             # 这里获取后置处理代码并执行
             after_code = step.get('after_code')
-            try:
-                exec(after_code)
-            except Exception:
-                pass
+            execute_before_after_code(after_code)
 
         res = {'status': True,
                'code': '200',
@@ -332,12 +326,9 @@ class APICaseTest(APIView):
                 try:
                     step_data = dict(step_serializer.data[j])
                     # 这里获取前置处理代码并执行
-                    before_code = step_data.get('before_code')
                     vars = ExtractVariables(extract_data)  # vars在前后置处理时使用vars.get() vars.put()
-                    try:
-                        exec(before_code)
-                    except Exception:
-                        pass
+                    before_code = step_data.get('before_code')
+                    execute_before_after_code(before_code)  # 执行自定义代码
                     step_data['url'] = host + step_data['uri']
                     # 根据提取参数重构请求参数
                     step_data = generate_req_data(step_data, extract_data)
@@ -367,10 +358,7 @@ class APICaseTest(APIView):
                                                assert_info=assert_info, report_id=report_id)
                     # 这里获取后置处理代码并执行
                     after_code = step_data.get('after_code')
-                    try:
-                        exec(after_code)
-                    except Exception:
-                        pass
+                    execute_before_after_code(after_code)
 
                 except Exception as e:
                     error_num = error_num + 1
@@ -461,10 +449,16 @@ def save_extract(extract_data, requset_extract, result):
             extract_jsonpath = v['value'].split('.')
             extract_val = result
             for obj in extract_jsonpath:
-                if obj in extract_val:
-                    extract_val = extract_val[obj]
-                else:
-                    extract_val = None
+                extract_val = extract_val.get(obj)
+                # 如果匹配不到返回None,则将期望值直接赋值为None并退出循环
+                if extract_val is None:
                     break
             # 存到临时字典extract_data中
             extract_data[k] = extract_val
+
+
+def execute_before_after_code(code):
+    try:
+        exec(code)
+    except Exception as e:
+        print(e)
