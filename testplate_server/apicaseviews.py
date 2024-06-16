@@ -286,17 +286,17 @@ class APICaseTest(APIView):
     def post(self, request):
         # 因为是drf封装了一层request，所以通过后端直接发送的字典会变成QueryDict（定时任务触发），而QueryDict只能通过getlist方法保留完整的列表，所以要判断类型
         if isinstance(request.data, QueryDict):
-            ids = request.data.getlist('ids')
+            ids = request.data.getlist('ids')  # 获取ids的列表
         else:
-            ids = request.data['ids']
-        success_cases = 0
-        error_cases = 0
+            ids = request.data['ids']  # 正常触发执行获取列表
+        success_cases = 0  # 初始化成功的用例数
+        error_cases = 0  # 初始化失败的用例数
         # 生成报告
         start_run_time = time.time_ns()  # 报告开始时间
-        created_user = request.operator
+        created_user = request.operator  # operator是通过django中间件根据token的用户信息插入到请求的
         # 获取报告id
-        report_id = self.save_report(created_user)
-        case_info = []
+        report_id = self.save_report(created_user)  # 保存报告返回报告的id，用于后续更新状态
+        case_info = []  # 初始化用例id列表
         # 开始组织用例
         for i in range(len(ids)):
             # 判断用例是否存在
@@ -315,12 +315,12 @@ class APICaseTest(APIView):
             # 获取步骤信息
             step_queryset = APICaseStep.objects.filter(api_case=case_serializer.data['id']).order_by('sort')
             step_serializer = APICaseStepInfoSerializer(instance=step_queryset, many=True)
-            len_step = len(step_serializer.data)
+            len_step = len(step_serializer.data)  # 获取步骤数量
             host = request.data['host']
-            error_num = 0  # 设置失败次数为0
+            error_num = 0  # 设置步骤失败次数为0
             response = []  # 还没存库，设置返回为空列表
             # 执行用例
-            start_time = time.time_ns()  # 这是纳秒
+            start_time = time.time_ns()  # 这是纳秒，用例开始的时间
             extract_data = {}  # 提取参数临时变量
             for j in range(len_step):
                 try:
@@ -340,13 +340,14 @@ class APICaseTest(APIView):
                     save_extract(extract_data, step_data.get('extract'), result)
 
                     # 根据断言结果判断步骤是否成功
-                    step_result = 3  # 3为无结果
+                    # step_result = 3  # 3为无结果
                     for k, v in assert_info.items():
                         if v.get('result') == 'error':
                             error_num += 1
                             step_result = 2
                             break
-                    if step_result != 2:
+                    # for else 循环没有经过break跳出，则最后执行else语句
+                    else:
                         step_result = 1
                     response.append(result.get('response'))
                     # 保存到用例详情表
@@ -366,7 +367,8 @@ class APICaseTest(APIView):
 
             end_time = time.time_ns()  # 用例结束时间
             run_time = (end_time - start_time) / 1000000  # 转化成ms
-            case_result = self.update_result(ids[i], error_num)
+            case_result = self.update_result(ids[i], error_num)  # 更新用例结果
+            # 生成用例执行详情
             case_info.append({'case_id': ids[i],
                               'case_name': case_serializer.data['name'],
                               'run_time': run_time,
