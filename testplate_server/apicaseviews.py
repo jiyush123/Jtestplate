@@ -294,9 +294,9 @@ class APICaseTest(APIView):
         # 生成报告
         start_run_time = time.time_ns()  # 报告开始时间
         created_user = request.operator  # operator是通过django中间件根据token的用户信息插入到请求的
-        # 获取报告id
-        report_id = self.save_report(created_user)  # 保存报告返回报告的id，用于后续更新状态
+
         case_info = []  # 初始化用例id列表
+        step_list = []  # 步骤详情列表
         # 开始组织用例
         for i in range(len(ids)):
             # 判断用例是否存在
@@ -353,10 +353,13 @@ class APICaseTest(APIView):
                     # 保存到用例详情表
                     # 排除键为assert_info，则排除断言信息
                     step_response = {k: v for k, v in result.items() if (k != 'assert_info' or k != 'run_time')}
-                    # 生成步骤详情
-                    self.save_report_case_info(case_id=ids[i], step_name=step_data['name'], run_time=active_time,
-                                               step_result=step_result, step_response=step_response,
-                                               assert_info=assert_info, report_id=report_id)
+
+                    # 步骤详情
+                    step_info = {'case_id': ids[i], 'step_name': step_data['name'], 'run_time': active_time,
+                                 'step_result': step_result, 'step_response': step_response,
+                                 'assert_info': assert_info}
+                    # 步骤详情列表
+                    step_list.append(step_info)
                     # 这里获取后置处理代码并执行
                     after_code = step_data.get('after_code')
                     execute_before_after_code(after_code)
@@ -385,17 +388,35 @@ class APICaseTest(APIView):
             case_result = 2
         else:
             case_result = 1
-        # 更新最后的报告
-        Report.objects.filter(pk=report_id).update(cases=case_info, success_nums=success_cases,
-                                                   error_nums=error_cases,
-                                                   end_time=report_end_time, result=case_result, status=2,
-                                                   total_time=total_time)
+
+        # 最后一次生成报告插入数据库
+        # 获取报告id
+        report_id = self.save_report(created_user=created_user, cases=case_info, success_nums=success_cases,
+                                     error_nums=error_cases,
+                                     end_time=report_end_time, result=case_result, status=2,
+                                     total_time=total_time)  # 保存报告返回报告的id，用于后续更新状态
+
+        # 生成步骤详情
+        for i in range(len(step_list)):
+            print(step_list[i])
+            self.save_report_case_info(report_id=report_id, **step_list[i])
+
         result = {
             'status': True,
             'code': '200',
             'msg': "执行完成,成功{}个用例，失败{}个用例".format(success_cases, error_cases)
         }
         return Response(result)
+
+    def save_report(self, created_user, **kwargs):
+        # 生成报告
+        name = '测试报告' + datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        created_user = created_user
+        created_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        new_report = Report(name=name, created_user=created_user, created_time=created_time, **kwargs)
+        new_report.save()
+        report_id = new_report.id
+        return report_id
 
     def update_result(self, id, err_nums):
         # 更新用例结果
@@ -407,16 +428,6 @@ class APICaseTest(APIView):
             APICase.objects.filter(pk=id).update(result=1)
             case_result = True
             return case_result
-
-    def save_report(self, created_user):
-        # 生成报告
-        name = '测试报告' + datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        created_user = created_user
-        created_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        new_report = Report(name=name, created_user=created_user, created_time=created_time)
-        new_report.save()
-        report_id = new_report.id
-        return report_id
 
     def save_report_case_info(self, case_id, step_name, run_time, step_result, step_response, assert_info,
                               report_id):
