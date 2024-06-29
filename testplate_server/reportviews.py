@@ -69,7 +69,6 @@ class ReportList(APIView):
             return Response({'status': False, 'code': 500, 'message': 'Internal Server Error'}, status=500)
 
 
-
 class ReportDetail(APIView):
     """获取报告详情"""
 
@@ -130,7 +129,7 @@ class ReportCaseDetail(APIView):
             return Response(res)
         queryset = ReportCaseInfo.objects.filter(case_id=case_id, report_id=report_id)
         # 获取所有字段
-        serializer = ReportCaseInfoSerializer(instance=queryset,many=True)
+        serializer = ReportCaseInfoSerializer(instance=queryset, many=True)
         result = {
             'status': True,
             'code': 200,
