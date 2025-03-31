@@ -54,7 +54,10 @@ class APICaseCountView(generics.GenericAPIView):
         not_started_count = APICase.objects.filter(status=1).count()
         in_progress_count = APICase.objects.filter(status=2).count()
         completed_count = APICase.objects.filter(status=3).count()
-        pass_percent = round((APICase.objects.filter(result=1).count() / APICase.objects.count())*100,2)
+        try:
+            pass_percent = round((APICase.objects.filter(result=1).count() / APICase.objects.count())*100,2)
+        except ZeroDivisionError:
+            pass_percent = 0  # 如果没有用例，那就默认为0
 
         data = {
             'not_started_total': not_started_count,
