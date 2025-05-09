@@ -146,3 +146,7 @@ REST_FRAMEWORK = {
 }
 
 SCHEDULER_AUTOSTART = True
+
+# 服务配置
+SERVICE_HOST = '127.0.0.1'  # 默认本地主机
+SERVICE_PORT = '8000'       # 默认端口 
