@@ -79,7 +79,7 @@ class Environment(models.Model):
     )
     protocol = models.SmallIntegerField(verbose_name='环境名称', choices=protocol_choices, default=1)
     host = models.CharField(verbose_name='地址', max_length=50)
-    port = models.IntegerField(verbose_name='端口')
+    port = models.IntegerField(verbose_name='端口', blank=True, null=True)
 
     def __str__(self):
         return self.name
